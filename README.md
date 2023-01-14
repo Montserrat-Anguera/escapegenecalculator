@@ -11,6 +11,7 @@ This package was created by running the following in an R terminal:
 ```R
 install.packages("devtools")
 install.packages("seqinr")
+install.packages("logr")
 
 devtools::create("/home/harrisonized/github/R/escapegenecalculator")
 devtools::document("/home/harrisonized/github/R/escapegenecalculator")
