@@ -69,7 +69,7 @@ library(seqinr)
 
 print('reading fasta file')
 fasta_file <- read.fasta(
-    paste(getwd( ), "data/transcriptome", "Mus_musculus_casteij.CAST_EiJ_v1.dna_rm.toplevel.fa", sep='/')
+    file.path(getwd( ), "data/transcriptome", "Mus_musculus_casteij.CAST_EiJ_v1.dna_rm.toplevel.fa")
 )
 
 fasta_length <- getLength(fasta_file)
@@ -79,7 +79,7 @@ fasta_length <- data.frame(fasta_length)
 print('writing fasta lengths')
 write.table(
 	rpkms_and_srpms_filtered,
-	file = paste(getwd( ), "data/transcriptome/length", "Mus_musculus_casteij_lengths.tsv", sep='/')
+	file = file.path(getwd( ), "data/transcriptome/length", "Mus_musculus_casteij_lengths.tsv")
 	row.names = FALSE,
 	sep = '\t'
 )
