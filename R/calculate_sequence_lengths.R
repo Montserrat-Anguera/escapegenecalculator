@@ -78,8 +78,8 @@ fasta_length <- data.frame(fasta_length)
 
 print('writing fasta lengths')
 write.table(
-	rpkms_and_srpms_filtered,
-	file = file.path(getwd( ), "data/transcriptome/length", "Mus_musculus_casteij_lengths.tsv")
-	row.names = FALSE,
-	sep = '\t'
+    fasta_length,
+    file = file.path(getwd( ), "data/transcriptome/length", "Mus_musculus_casteij_lengths.tsv"),
+    row.names = TRUE,
+    sep = '\t'
 )
