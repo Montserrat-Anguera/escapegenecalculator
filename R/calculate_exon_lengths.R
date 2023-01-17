@@ -1,10 +1,11 @@
+## Note: this script takes about 20 seconds to run
 ## 1. Import the gzipped gtf file using rtracklayer
 ## 2. convert it to a data frame
 ## 3. throw away rows that have an NA in the gene_name column
 ## 4. throw out rows that have genes mapped to autosomes
 ## 5. pull out the chromosome, start, stop, width, type, gene id, and gene name columns.
 ## 6. Loop through and pull out the width and gene names that correspond to type == 'gene'.
-## 7. Do for both genomes. 
+## 7. Do for both genomes.
 
 
 library(logr)
@@ -12,18 +13,17 @@ library(GenomicFeatures)
 
 
 # Input parameters
-gtf_dir = file.path(getwd( ), "data/gtf")
-gtf_filename = 'Mus_musculus_casteij.CAST_EiJ_v1.108.gtf'
-gff_dir = file.path(getwd( ), "data/gff")
-gff_filename = 'Mus_musculus_casteij.CAST_EiJ_v1.108.chr.gff3.gz'
-out_dir = file.path(getwd( ), "data/gtf/strip_cast")
-out_filename = "strip_cast-Mus_musculus_casteij.tsv"
+in_dir = file.path(getwd( ), "data/gtf/raw")
+in_filename = 'Mus_musculus_casteij.CAST_EiJ_v1.103.chr_sorted.gtf.gz'
+# in_filename = 'Mus_musculus.GRCm38.102.chr_sorted_noYMT.gtf.gz'
+out_dir = file.path(getwd( ), "data/gtf")
+species = strsplit(in_filename, split = ".", fixed=TRUE)[[1]][1]
+out_filename = paste("exon_length-", species, ".tsv")
 
 
 # Start Log
-log <- log_open(paste("strip_cast ", Sys.time(), '.log', sep='')) # Open log
-log_print(paste('gtf file: ', file.path(gtf_dir, gtf_filename)))
-log_print(paste('gff file: ', file.path(gff_dir, gff_filename)))
+log <- log_open(paste("calculate_exon_lengths ", Sys.time(), '.log', sep='')) # Open log
+log_print(paste('input file: ', file.path(in_dir, in_filename)))
 log_print(paste('output file: ', file.path(out_dir, out_filename)))
 
 
@@ -33,18 +33,23 @@ log_print(paste('output file: ', file.path(out_dir, out_filename)))
 # Import gtf data
 log_print("Importing gtf data...")
 # gtf_cast <- rtracklayer::import('data/gtf/Mus_musculus.GRCm38.87.gtf')
-gtf_cast <- rtracklayer::import('data/gtf/Mus_musculus_casteij.CAST_EiJ_v1.108.gtf')
+# gtf_cast <- rtracklayer::import('data/gtf/Mus_musculus_casteij.CAST_EiJ_v1.108.gtf')
+gtf_cast <- rtracklayer::import(
+    file.path(in_dir, in_filename)
+)
 gtf_cast_df <- as.data.frame(gtf_cast, stringsAsFactors = FALSE)
 test_cast <- gtf_cast_df[is.na(gtf_cast_df$gene_name) == FALSE & gtf_cast_df$seqnames == 'X',]
-cast_filtered <- test_cast[,c(1,2,3,4,7,10,23)]
+# cast_filtered <- test_cast[,c(1,2,3,4,7,10,23)]
+cast_filtered <- test_cast[,c(1,2,3,4,7,10,15)]
+
 
 
 # First, import the GTF-file that you have also used as input for htseq-count
 start_time = Sys.time()
-log_print(paste("Making TxDb from gff...", start_time))
+log_print(paste("Making TxDb from GTF...", start_time))
 txdb_cast <- makeTxDbFromGFF(
-    'data/gff/Mus_musculus_casteij.CAST_EiJ_v1.108.chr.gff3.gz',
-    # format="gtf"
+    file.path(in_dir, in_filename),
+    format="gtf"
 )
 end_time = Sys.time()
 log_print(paste('finished.', end_time))
