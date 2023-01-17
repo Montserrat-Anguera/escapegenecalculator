@@ -6,16 +6,17 @@ library(seqinr)
 
 
 # Input parameters
-in_dir = file.path(getwd( ), "data/transcriptome")
-input_filename = 'Mus_musculus_casteij.CAST_EiJ_v1.dna_rm.toplevel.fa'
-out_dir = file.path(in_dir, "length")
-output_filename = 'Mus_musculus_casteij_lengths.tsv'
+in_dir = file.path(getwd( ), "data/fasta/raw")
+in_filename = 'Mus_musculus_casteij.CAST_EiJ_v1.dna_rm.toplevel.fa'
+out_dir = file.path(getwd( ), "data/fasta")
+species = strsplit(in_filename, split = ".", fixed=TRUE)[[1]][1]
+out_filename = paste("chr_lengths-", species, ".tsv", sep='')
 
 
 # Start Log
 log <- log_open(paste("calculate_sequence_lengths ", Sys.time(), '.log', sep=''))
-log_print(paste('input file: ', file.path(in_dir, input_filename)))
-log_print(paste('output file: ', file.path(out_dir, output_filename)))
+log_print(paste('input file: ', file.path(in_dir, in_filename)))
+log_print(paste('output file: ', file.path(out_dir, out_filename)))
 
 
 # ----------------------------------------------------------------------
@@ -24,7 +25,7 @@ log_print(paste('output file: ', file.path(out_dir, output_filename)))
 # Read fasta file
 start_time = Sys.time()
 log_print(paste('reading fasta file...', start_time))
-fasta_file <- read.fasta(file.path(in_dir, input_filename))
+fasta_file <- read.fasta(file.path(in_dir, in_filename))
 end_time = Sys.time()
 log_print(paste('opened.', end_time))
 log_print(paste('time to open: ', end_time - start_time))
@@ -50,7 +51,7 @@ if (!file.exists(out_dir)) {
 }
 write.table(
     fasta_length,
-    file = file.path(out_dir, output_filename),
+    file = file.path(out_dir, out_filename),
     row.names = TRUE,
     sep = '\t'
 )

@@ -1,6 +1,7 @@
 .origR
 .Rproj.user
 data/transcriptome
-data/gtf
+data/fasta
 data/gff
+data/gtf
 log
