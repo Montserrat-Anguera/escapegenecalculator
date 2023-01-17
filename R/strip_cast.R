@@ -6,6 +6,7 @@
 ## 6. Loop through and pull out the width and gene names that correspond to type == 'gene'.
 ## 7. Do for both genomes. 
 
+
 library(logr)
 library(GenomicFeatures)
 
@@ -81,7 +82,7 @@ write.table(
     strip_cast,
     file = file.path(out_dir, out_filename),
     col.names = TRUE,
-    row.names = TRUE,
+    row.names = FALSE,
     sep = '\t'
 )
 
