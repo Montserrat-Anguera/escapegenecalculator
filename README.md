@@ -23,6 +23,12 @@ devtools::document("/home/harrisonized/github/R/escapegenecalculator")
 
 
 
+## Downloading Data
+
+Check the README files for what to download for each folder.
+
+
+
 ## Use
 
 Run the following from command line:
