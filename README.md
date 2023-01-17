@@ -12,13 +12,15 @@ Run the following in your R console. My machine is on R 4.2.2.
 install.packages("devtools")
 install.packages("seqinr")
 install.packages("logr")
+install.packages("data.table")
 
 install.packages("BiocManager")
 BiocManager::install("rtracklayer")  # this takes ~15 minutes
 BiocManager::install("GenomicFeatures")
 
-devtools::create("/home/harrisonized/github/R/escapegenecalculator")
-devtools::document("/home/harrisonized/github/R/escapegenecalculator")
+devtools::create("~/github/R/escapegenecalculator")
+devtools::document("~/github/R/escapegenecalculator")
+# install.packages("~/github/R/escapegenecalculator", repos=NULL, type='source')  # do not install this
 ```
 
 
