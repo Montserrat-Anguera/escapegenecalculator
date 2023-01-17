@@ -36,7 +36,7 @@ items_in_a_not_b <- function(a, b) {
 
 
 # Input parameters
-in_dir = file.path(getwd( ), "data", "haploid_raw_read_counts")
+in_dir = file.path(getwd( ), "data", "raw_read_counts")
 pat_dir = file.path(in_dir, "mouse_pat-cast")  # silenced
 mat_dir = file.path(in_dir, "mouse_mat-bl6")  
 out_dir = file.path(getwd( ), "data")
@@ -61,17 +61,17 @@ log_print(paste('output file 2: ', file.path(out_dir, read_summary_filename)))
 log_print("reading pat data...")
 pat_data = join_many_csv(pat_dir, by=index_cols, sep='\t')
 pat_data = pat_data[-((nrow(pat_data)-4):nrow(pat_data)),]  # filter last 5 rows of each, which contains a bunch of unmapped reads and crap that will mess up downstream analysis. 
-Cast = subset(pat_data,!is.na(pat_data$gene_name))
-# colnames(Cast) = c("name","chr","1B_nameadded", "Female_Cast_2", "Female_Cast_3","Female_Cast_4","Male_Cast_1","Male_Cast_2","Male_Cast_3","Male_Cast_4")
+cast = subset(pat_data,!is.na(pat_data$gene_name))
+# colnames(cast) = c("name","chr","1B_nameadded", "Female_cast_2", "Female_cast_3","Female_cast_4","Male_cast_1","Male_cast_2","Male_cast_3","Male_cast_4")
 
 
 # read mat data, bl6
-# get count for DESeq2. Loading in the rawest read file for the cast mapping.
+# get count for DESeq2. Loading in the rawest read file for the bl6 mapping.
 log_print("reading mat data...")
 mat_data = join_many_csv(mat_dir, by=index_cols, sep='\t')
 mat_data = mat_data[-((nrow(mat_data)-4):nrow(pat_data)),]  # filter last 5 rows of each, which contains a bunch of unmapped reads and crap that will mess up downstream analysis. 
-B6 = subset(mat_data,!is.na(mat_data$gene_name))
-# colnames(B6) = c("name","chr","Female_B6_1","Female_B6_2","Female_B6_3","Female_B6_4","Male_B6_1","Male_B6_2","Male_B6_3","Male_B6_4")
+bl6 = subset(mat_data,!is.na(mat_data$gene_name))
+# colnames(bl6) = c("name","chr","Female_bl6_1","Female_bl6_2","Female_bl6_3","Female_bl6_4","Male_bl6_1","Male_bl6_2","Male_bl6_3","Male_bl6_4")
 
 
 # ----------------------------------------------------------------------
@@ -79,19 +79,19 @@ B6 = subset(mat_data,!is.na(mat_data$gene_name))
 
 
 # Now get rid of any duplicated gene names for both genome-specific data frames. 
-# Cast_unique = subset(Cast,!duplicated(Cast$name))
-# B6_unique = subset(B6,!duplicated(B6$name))
+# cast_unique = subset(cast,!duplicated(cast$name))
+# bl6_unique = subset(bl6,!duplicated(bl6$name))
 
 # Next, I need to identify genes that are commonly shared between the two genomes.
 # I will save these genes as a variable called common.
-# rownames(Cast_unique) <- Cast_unique$name
-# rownames(B6_unique) <- B6_unique$name
-# common <- intersect(rownames(Cast_unique),rownames(B6_unique))
+# rownames(cast_unique) <- cast_unique$name
+# rownames(bl6_unique) <- bl6_unique$name
+# common <- intersect(rownames(cast_unique),rownames(bl6_unique))
 
 # Now I subset my Unique dataframes by only the common genes,
 # such that each genome specific data frame has the same genes. 
-# Cast_common <- Cast_unique[common,]
-# B6_common <- B6_unique[common,]
+# cast_common <- cast_unique[common,]
+# bl6_common <- bl6_unique[common,]
 
 
 # ----------------------------------------------------------------------
@@ -108,15 +108,15 @@ B6 = subset(mat_data,!is.na(mat_data$gene_name))
 # all_reads = matrix(0,length(common),13)
 # all_reads = as.data.frame(all_reads)
 # rownames(all_reads) <- common
-# # colnames(all_reads) <- c('chr','Cast Female #1','Cast Female #2','Cast Female #3','Cast Female #4','B6 Female #1','B6 Female #2','B6 Female #3', 'B6 Female #4','B6 Male #1','B6 Male #2','B6 Male #3','B6 Male #4')    
-# all_reads[,1:5] = Cast_common[,2:6]
-# all_reads[,6:9] <- B6_common[,3:6]
-# all_reads[,10:13] <- B6_common[,7:10]
+# # colnames(all_reads) <- c('chr','cast Female #1','cast Female #2','cast Female #3','cast Female #4','bl6 Female #1','bl6 Female #2','bl6 Female #3', 'bl6 Female #4','bl6 Male #1','bl6 Male #2','bl6 Male #3','bl6 Male #4')    
+# all_reads[,1:5] = cast_common[,2:6]
+# all_reads[,6:9] <- bl6_common[,3:6]
+# all_reads[,10:13] <- bl6_common[,7:10]
 
 log_print("left join result...")
 all_reads <- merge(
-    Cast[-which(Cast$gene_name == ""), ],
-    B6[-which(B6$gene_name == ""), ],
+    cast[-which(cast$gene_name == ""), ],
+    bl6[-which(bl6$gene_name == ""), ],
     by='gene_name',
     na_matches = "never"
 )
@@ -138,16 +138,18 @@ write.table(
 # Finally, I will make a csv file with read summary data for calculating mapping biases in the future. 
 # read_summary = matrix(0,2,12)
 # read_summary = as.data.frame(read_summary)
-# # colnames(read_summary) <- c('Cast Female #1','Cast Female #2','Cast Female #3','Cast Female #4','B6 Female #1','B6 Female #2','B6 Female #3', 'B6 Female #4','B6 Male #1','B6 Male #2','B6 Male #3','B6 Male #4')
+# # colnames(read_summary) <- c('cast Female #1','cast Female #2','cast Female #3','cast Female #4','bl6 Female #1','bl6 Female #2','bl6 Female #3', 'bl6 Female #4','bl6 Male #1','bl6 Male #2','bl6 Male #3','bl6 Male #4')
 # rownames(read_summary) <- c('Sum of total reads before filtering','Sum after dropping dups & nameless genes')
 # read_summary[1,1:12] <- c(sum(data1$count), sum(data2$count), sum(data3$count), sum(data4$count), sum(data9$count), sum(data10$count), sum(data11$count), sum(data12$count), sum(data13$count), sum(data14$count), sum(data15$count), sum(data16$count))
-# read_summary[2,1:12] <- c(sum(Cast_unique$Female_Cast_1), sum(Cast_unique$Female_Cast_2), sum(Cast_unique$Female_Cast_3), sum(Cast_unique$Female_Cast_4), sum(B6_unique$Female_B6_1), sum(B6_unique$Female_B6_2), sum(B6_unique$Female_B6_3), sum(B6_unique$Female_B6_4), sum(B6_unique$Male_B6_1), sum(B6_unique$Male_B6_2), sum(B6_unique$Male_B6_3), sum(B6_unique$Male_B6_4))
+# read_summary[2,1:12] <- c(sum(cast_unique$Female_cast_1), sum(cast_unique$Female_cast_2), sum(cast_unique$Female_cast_3), sum(cast_unique$Female_cast_4), sum(bl6_unique$Female_bl6_1), sum(bl6_unique$Female_bl6_2), sum(bl6_unique$Female_bl6_3), sum(bl6_unique$Female_bl6_4), sum(bl6_unique$Male_bl6_1), sum(bl6_unique$Male_bl6_2), sum(bl6_unique$Male_bl6_3), sum(bl6_unique$Male_bl6_4))
 
 count_cols = c(
-	items_in_a_not_b(colnames(Cast), c("gene_id", "gene_name", "chromosome")),
-	items_in_a_not_b(colnames(Cast), c("gene_id", "gene_name", "chromosome"))
+	items_in_a_not_b(colnames(cast), c("gene_id", "gene_name", "chromosome")),
+	items_in_a_not_b(colnames(cast), c("gene_id", "gene_name", "chromosome"))
 )
 read_summary = colSums(all_reads[count_cols])
+
+# also need unfiltered summary
 
 log_print("writing read_summary...")
 write.table(
