@@ -61,13 +61,15 @@ data = cbind(data1[,1:3],data2[,3],data3[,3],data4[,3],data5[,3])
 dataC = cbind(data1C[,1:3],data2C[,3],data3C[,3],data4C[,3],data5C[,3])
 
 datamerge <- merge(data, dataC, by="gene_name")
-uniquedata<- dplyr::distinct(datamerge)
+uniquedata <- dplyr::distinct(datamerge)
 
 #rownames(uniqueXdata) = uniqueXdata[,1]
 unique2 = subset(uniquedata, select = -c(chromosome.y) )
 
-colnames(unique2) = c("name","chr","Samp1_B6", "Samp2_B6","Samp3_B6","Samp4_B6","Samp5_B6",
-                   "Samp1_Cas", "Samp2_Cas","Samp3_Cas","Samp4_Cas","Samp5_Cas")
+colnames(unique2) = c(
+    "name", "chr", "Samp1_B6", "Samp2_B6","Samp3_B6","Samp4_B6","Samp5_B6",
+    "Samp1_Cas", "Samp2_Cas","Samp3_Cas","Samp4_Cas","Samp5_Cas"
+)
 
 uniqueX = unique2[ which(unique2$chr=='X'), ]
 
