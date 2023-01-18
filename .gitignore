@@ -1,8 +1,5 @@
 .origR
 .Rproj.user
-data/transcriptome
-data/fasta
-data/gff
-data/gtf
-data/raw_read_counts
+data/ref
+data/archive
 log

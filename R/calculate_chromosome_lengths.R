@@ -6,11 +6,11 @@ library(seqinr)
 
 
 # Input parameters
-in_dir = file.path(getwd( ), "data/fasta/raw")
+in_dir = file.path(getwd( ), "data/ref/fasta")
 in_filename = 'Mus_musculus_casteij.CAST_EiJ_v1.dna_rm.toplevel.fa'
-out_dir = file.path(getwd( ), "data/fasta")
+out_dir = file.path(getwd( ), "data/ref")
 species = strsplit(in_filename, split = ".", fixed=TRUE)[[1]][1]
-out_filename = paste("chr_lengths-", species, ".tsv", sep='')
+out_filename = paste("chr_lengths-", species, ".csv", sep='')
 
 
 # Start Log
@@ -53,7 +53,7 @@ write.table(
     fasta_length,
     file = file.path(out_dir, out_filename),
     row.names = TRUE,
-    sep = '\t'
+    sep = ','
 )
 
 

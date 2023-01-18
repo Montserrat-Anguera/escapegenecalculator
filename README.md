@@ -50,3 +50,10 @@ Rscript R/step2-aggregate_raw_reads.R
 Rscript R/step3-CI_calculation.R
 Rscript R/step4-match_CIs_RPKM_SRPM.R
 ```
+
+
+
+## Style Guide
+
+1. Use snake_case, not camelCase.
+2. Make sure all inputs/outputs are csv, not tsv.

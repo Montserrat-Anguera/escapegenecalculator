@@ -13,12 +13,13 @@ library(GenomicFeatures)
 
 
 # Input parameters
-in_dir = file.path(getwd( ), "data/gtf/raw")
-# in_filename = 'Mus_musculus_casteij.CAST_EiJ_v1.103.chr_sorted.gtf.gz'
-in_filename = 'Mus_musculus.GRCm38.102.chr_sorted_noYMT.gtf.gz'
-out_dir = file.path(getwd( ), "data/gtf")
+# Note: in the future, make this loop through the directory or be able to pass a list
+in_dir = file.path(getwd( ), "data/ref/gtf")
+in_filename = 'Mus_musculus_casteij.CAST_EiJ_v1.103.chr_sorted.gtf.gz'
+# in_filename = 'Mus_musculus.GRCm38.102.chr_sorted_noYMT.gtf.gz'
+out_dir = file.path(getwd( ), "data/ref")
 species = strsplit(in_filename, split = ".", fixed=TRUE)[[1]][1]
-out_filename = paste("exon_lengths-", species, ".tsv", sep='')
+out_filename = paste("exon_lengths-", species, ".csv", sep='')
 
 
 # Start Log
@@ -88,7 +89,7 @@ write.table(
     file = file.path(out_dir, out_filename),
     col.names = TRUE,
     row.names = FALSE,
-    sep = '\t'
+    sep = ','
 )
 
 log_print(paste('End', Sys.time()))
