@@ -16,7 +16,7 @@ rpkms_and_srpms_filtered_filename = 'step1_RPKM_SRPM_Filtered_AT2.csv'
 
 
 # Start Log
-log <- log_open(paste("step1 ", Sys.time(), '.log', sep=''))
+log <- log_open(paste("step1-calculate_rpkm_srpm ", Sys.time(), '.log', sep=''))
 log_print(paste('input file: ', file.path(in_dir, input_filename)))
 log_print(paste('output file 1: ', file.path(out_dir, joint_rpkms_filename)))
 log_print(paste('output file 2: ', file.path(out_dir, rpkms_and_srpms_filtered_filename)))

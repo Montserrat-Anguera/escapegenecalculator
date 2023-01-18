@@ -60,7 +60,7 @@ join_many_csv <- function(dir_path, index_cols, value_cols, sep=',') {
 # Start Script
 
 # Start Log
-log <- log_open(paste("step2 ", Sys.time(), '.log', sep=''))
+log <- log_open(paste("step2-aggregate_raw_reads ", Sys.time(), '.log', sep=''))
 log_print(paste('input path, pat: ', pat_dir))
 log_print(paste('input path, mat: ', mat_dir))
 log_print(paste('output file 1: ', file.path(out_dir, all_reads_filename)))

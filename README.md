@@ -13,6 +13,7 @@ install.packages("devtools")
 install.packages("seqinr")
 install.packages("logr")
 install.packages("data.table")
+install.packages("dplyr")
 
 install.packages("BiocManager")
 BiocManager::install("rtracklayer")  # this takes ~15 minutes

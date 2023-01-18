@@ -12,7 +12,7 @@ out_dir = file.path(getwd( ), "data", "agg_reads")
 
 
 # Start Log
-log <- log_open(paste("step1 ", Sys.time(), '.log', sep=''))
+log <- log_open(paste("step0-merge_read_counts ", Sys.time(), '.log', sep=''))
 log_print(paste('input dir: ', file.path(in_dir)))
 log_print(paste('output file 1: ', file.path(out_dir, "AT2_2022_uniqueReads_Xchromosome_B6andCast.csv")))
 log_print(paste('output file 2: ', file.path(out_dir, "AT2_2022_uniqueReads_ALLchromosome_B6andCast.csv")))

@@ -12,7 +12,7 @@ out_filename = 'step4_Genes_3_thresholds_FINAL_AT2.csv'
 
 
 # Start Log
-log <- log_open(paste("step4 ", Sys.time(), '.log', sep=''))
+log <- log_open(paste("step4-match_rpkm_srpm_confidence_intervals ", Sys.time(), '.log', sep=''))
 log_print(paste('input file 1: ', step1_filename))
 log_print(paste('input file 2: ', step3_filename))
 log_print(paste('output file 1: ', file.path(out_dir, out_filename)))
