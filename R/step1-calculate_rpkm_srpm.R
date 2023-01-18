@@ -8,7 +8,7 @@ ref_dir = file.path(getwd( ), "data", "ref")
 pat_exon_lengths_filepath = file.path(ref_dir, "exon_lengths-Mus_musculus_casteij.csv")
 mat_exon_lengths_filepath = file.path(ref_dir, "exon_lengths-Mus_musculus.csv")
 
-in_dir = file.path(getwd( ), "data")
+in_dir = file.path(getwd( ), "data", "agg_reads")
 input_filename = "AT2_2022_uniqueRPM_Xchromosome_B6andCast.csv"
 out_dir = file.path(getwd( ), "data")
 joint_rpkms_filename = 'step1_joint_rpkms_AT2.csv'
