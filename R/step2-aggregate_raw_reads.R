@@ -92,7 +92,7 @@ mat_data_subset = subset(mat_data,!is.na(mat_data$gene_name))
 all_reads <- merge(
     pat_data_subset[-which(pat_data_subset$gene_name == ""), ],
     mat_data_subset[-which(mat_data_subset$gene_name == ""), ],
-    by='gene_name',
+    by=c('gene_name', 'chromosome'),
     suffixes=c('_pat', '_mat'),
     na_matches = "never"
 )
