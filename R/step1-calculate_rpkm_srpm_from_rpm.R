@@ -1,14 +1,18 @@
+## Depends on output of calculate_exon_lengths
 
 library(logr)
 
 
 # Input parameters
-in_dir = file.path(getwd( ), "data/unique_rpm")
-# input_filename = 'ClaudiaData_May12_2021_XCHR_LimitedTranscriptome_RPM.csv'
+ref_dir = file.path(getwd( ), "data", "ref")
+pat_exon_lengths_filepath = file.path(ref_dir, "exon_lengths-Mus_musculus_casteij.csv")
+mat_exon_lengths_filepath = file.path(ref_dir, "exon_lengths-Mus_musculus.csv")
+
+in_dir = file.path(getwd( ), "data")
 input_filename = "AT2_2022_uniqueRPM_Xchromosome_B6andCast.csv"
 out_dir = file.path(getwd( ), "data")
-joint_rpkms_filename = 'step1_joint_rpkms_AT2.tsv'
-rpkms_and_srpms_filtered_filename = 'step1_RPKM_SRPM_Filtered_AT2.tsv'
+joint_rpkms_filename = 'step1_joint_rpkms_AT2.csv'
+rpkms_and_srpms_filtered_filename = 'step1_RPKM_SRPM_Filtered_AT2.csv'
 
 
 # Start Log
@@ -23,19 +27,17 @@ log_print(paste('output file 2: ', file.path(out_dir, rpkms_and_srpms_filtered_f
 
 log_print("reading caasteij data...")
 strip_cast <- read.csv(
-    file.path(getwd( ), "data", "gtf", "exon_lengths-Mus_musculus_casteij.tsv"),
+    pat_exon_lengths_filepath,
     na.string="NA",
     stringsAsFactors=FALSE,
-    sep='\t'
     # row.names=1
 )
 
 log_print("reading c57bl6 data...")
 strip_b6 <- read.csv(
-    file.path(getwd( ), "data", "gtf","exon_lengths-Mus_musculus.tsv"),
+    mat_exon_lengths_filepath,
     na.string="NA",
     stringsAsFactors=FALSE,
-    sep='\t'
     # row.names=1
 )
 
@@ -127,9 +129,9 @@ if (!file.exists(out_dir)) {
     dir.create(out_dir)
 }
 write.table(joint_rpkms,
-	file = file.path(out_dir, joint_rpkms_filename),
-	row.names = FALSE,
-	sep = '\t'
+    file = file.path(out_dir, joint_rpkms_filename),
+    row.names = FALSE,
+    sep=','
 )
 
 
@@ -229,7 +231,7 @@ write.table(
     rpkms_and_srpms_filtered,
     file = file.path(out_dir, rpkms_and_srpms_filtered_filename),
     row.names = FALSE,
-    sep = '\t'
+    sep = ','
 )
 
 log_print(paste('End', Sys.time()))

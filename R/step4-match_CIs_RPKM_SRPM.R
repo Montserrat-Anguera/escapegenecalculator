@@ -5,10 +5,10 @@ library(logr)
 
 # Input parameters
 in_dir = file.path(getwd( ), "data")
-step1_filename = 'step1_RPKM_SRPM_Filtered_AT2.tsv'
-step3_filename = 'step3_CIs_AT2.tsv'
+step1_filename = 'step1_RPKM_SRPM_Filtered_AT2.csv'
+step3_filename = 'step3_CIs_AT2.csv'
 out_dir = file.path(getwd( ), "data")
-out_filename = 'step4_Genes_3_thresholds_FINAL_AT2.tsv'
+out_filename = 'step4_Genes_3_thresholds_FINAL_AT2.csv'
 
 
 # Start Log
@@ -26,14 +26,14 @@ log_print("reading data...")
 RPKM_SRPM_Filtered <- read.table(
     file.path(in_dir, step1_filename),
     header=TRUE,
-    sep="\t"
+    sep=","
 )
 rownames(RPKM_SRPM_Filtered) <- RPKM_SRPM_Filtered$Gene
 
 CIs_filtered <- read.table(
     file.path(in_dir, step3_filename),
     header=TRUE,
-    sep="\t"
+    sep=","
 )
 
 
@@ -64,7 +64,7 @@ write.table(
     genes_meeting_3_thresholds_in_female,
     file=file.path(in_dir, out_filename),
     row.names = FALSE,
-    sep = '\t'
+    sep = ','
 )
 
 log_print(paste('End', Sys.time()))
