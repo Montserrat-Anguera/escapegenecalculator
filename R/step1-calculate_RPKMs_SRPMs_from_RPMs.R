@@ -3,7 +3,7 @@ library(logr)
 
 
 # Input parameters
-in_dir = file.path(getwd( ), "data")
+in_dir = file.path(getwd( ), "data/unique_rpm")
 # input_filename = 'ClaudiaData_May12_2021_XCHR_LimitedTranscriptome_RPM.csv'
 input_filename = "AT2_2022_uniqueRPM_Xchromosome_B6andCast.csv"
 out_dir = file.path(getwd( ), "data")
