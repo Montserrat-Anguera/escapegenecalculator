@@ -20,7 +20,9 @@ BiocManager::install("GenomicFeatures")
 
 devtools::create("~/github/R/escapegenecalculator")
 devtools::document("~/github/R/escapegenecalculator")
-# install.packages("~/github/R/escapegenecalculator", repos=NULL, type='source')  # do not install this
+
+# Warning! Do not install this as a library, it will run through all scripts
+# install.packages("~/github/R/escapegenecalculator", repos=NULL, type='source')  
 ```
 
 
@@ -44,7 +46,7 @@ Rscript R/calculate_chromosome_lengths.R  # this takes 5 minutes
 
 # Go through the steps
 Rscript R/step1-calculate_RPKMs_SRPMs_from_RPMs.R
-Rscript R/step2-convert_rawreads_to_filteredreads.R
+Rscript R/step2-aggregate_raw_reads.R
 Rscript R/step3-CI_calculation.R
 Rscript R/step4-match_CIs_RPKM_SRPM.R
 ```
