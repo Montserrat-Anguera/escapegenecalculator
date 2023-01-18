@@ -1,6 +1,6 @@
 ## Introduction
 
-This code was provided to me by Sarah Pyfrom.
+This code was provided to me by Sarah Pyfrom. It takes tsv files from `data/raw_read_counts` as input and outputs a variety of csv files.
 
 
 
@@ -46,6 +46,7 @@ Rscript R/calculate_exon_lengths.R
 Rscript R/calculate_chromosome_lengths.R  # this takes 5 minutes
 
 # Go through the steps
+Rscript R/step0-merge_read_counts.R
 Rscript R/step1-calculate_RPKMs_SRPMs_from_RPMs.R
 Rscript R/step2-aggregate_raw_reads.R
 Rscript R/step3-CI_calculation.R
