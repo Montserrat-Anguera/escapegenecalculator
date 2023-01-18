@@ -7,8 +7,8 @@ Add tsv files to the `mouse_mat-bl6` and `mouse_pat-cast` directories with the f
 
 Group the data for each mouse, one per directory. Please follow the following naming convention for your files:
 
-```
-(paternal or maternal)-(bl6 or cast)-(mouse_name).tsv
+```bash
+(mouse_name)-(paternal or maternal)-(bl6 or cast).tsv
 ```
 
-Example: `paternal-cast-mouse_1.tsv`
+Example: `mouse_1-paternal-cast.tsv`

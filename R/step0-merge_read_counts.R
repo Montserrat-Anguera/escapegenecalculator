@@ -6,8 +6,6 @@ library(logr)
 
 # Input parameters
 in_dir = file.path(getwd( ), "data", "raw_read_counts")
-pat_dir = file.path(in_dir, "mouse_pat-cast")  # silenced
-mat_dir = file.path(in_dir, "mouse_mat-bl6")
 out_dir = file.path(getwd( ), "data", "agg_reads")
 
 
@@ -21,22 +19,48 @@ log_print(paste('output file 2: ', file.path(out_dir, "AT2_2022_uniqueRPM_ALLchr
 
 
 # ----------------------------------------------------------------------
+# Common Use Functions
+# Note: Need to figure out how to make this work from the utils.R file
+
+#' list all files in all subdirectories with a given extension
+#' 
+#' @export
+list_files <- function(filepath, ext=NULL, recursive = TRUE) {
+    all_files = list.files(file.path(wd, 'data/raw_read_counts'), recursive = recursive)
+
+    if (!is.null(ext)) {
+        # See: https://stackoverflow.com/questions/7187442/filter-a-vector-of-strings-based-on-string-matching
+        return (all_files[grepl(paste("^m.*\\.", ext, sep=''), all_files)])
+    } else {
+        return (all_files)
+    }
+}
+
+
+# ----------------------------------------------------------------------
 # Read Data
+
+# Temp refactor
+# tsv_filepaths = list_files(file.path(wd, 'data/raw_read_counts'), ext='tsv')
+# tsv_filenames = sapply(strsplit(tsv_filepaths, "/"), "[", 2)
+# tmp = sapply(strsplit(tsv_filenames, "-"), "[", 1:2)  # mouse_id+paternal/maternal
+# mouse_ids = apply(tmp, 2, paste, collapse = "_")
+
 
 log_print("reading data...")
 
-data1 = read.table(file.path(mat_dir, "1B_nameadded.tsv"), header=TRUE, sep="\t", row.names=1, na.strings = "")
-data2 = read.table(file.path(mat_dir, "2B_nameadded.tsv"), header=TRUE, sep="\t", row.names=1, na.strings = "")
-data3 = read.table(file.path(mat_dir, "4B_nameadded.tsv"), header=TRUE, sep="\t", row.names=1, na.strings = "")
-data4 = read.table(file.path(mat_dir, "7B_nameadded.tsv"), header=TRUE, sep="\t", row.names=1, na.strings = "")
-data5 = read.table(file.path(mat_dir, "8B_nameadded.tsv"), header=TRUE, sep="\t", row.names=1, na.strings = "")
+data1 = read.table(file.path(in_dir, "mouse_1", "mouse_1-maternal-bl6.tsv"), header=TRUE, sep="\t", row.names=1, na.strings = "")
+data2 = read.table(file.path(in_dir, "mouse_2", "mouse_2-maternal-bl6.tsv"), header=TRUE, sep="\t", row.names=1, na.strings = "")
+data3 = read.table(file.path(in_dir, "mouse_4", "mouse_4-maternal-bl6.tsv"), header=TRUE, sep="\t", row.names=1, na.strings = "")
+data4 = read.table(file.path(in_dir, "mouse_7", "mouse_7-maternal-bl6.tsv"), header=TRUE, sep="\t", row.names=1, na.strings = "")
+data5 = read.table(file.path(in_dir, "mouse_8", "mouse_8-maternal-bl6.tsv"), header=TRUE, sep="\t", row.names=1, na.strings = "")
 
 
-data1C = read.table(file.path(pat_dir, "1C_nameadded.tsv"), header=TRUE, sep="\t", row.names=1, na.strings = "")
-data2C = read.table(file.path(pat_dir, "2C_nameadded.tsv"), header=TRUE, sep="\t", row.names=1, na.strings = "")
-data3C = read.table(file.path(pat_dir, "4C_nameadded.tsv"), header=TRUE, sep="\t", row.names=1, na.strings = "")
-data4C = read.table(file.path(pat_dir, "7C_nameadded.tsv"), header=TRUE, sep="\t", row.names=1, na.strings = "")
-data5C = read.table(file.path(pat_dir, "8C_nameadded.tsv"), header=TRUE, sep="\t", row.names=1, na.strings = "")
+data1C = read.table(file.path(in_dir, "mouse_1", "mouse_1-paternal-cast.tsv"), header=TRUE, sep="\t", row.names=1, na.strings = "")
+data2C = read.table(file.path(in_dir, "mouse_2", "mouse_2-paternal-cast.tsv"), header=TRUE, sep="\t", row.names=1, na.strings = "")
+data3C = read.table(file.path(in_dir, "mouse_4", "mouse_4-paternal-cast.tsv"), header=TRUE, sep="\t", row.names=1, na.strings = "")
+data4C = read.table(file.path(in_dir, "mouse_7", "mouse_7-paternal-cast.tsv"), header=TRUE, sep="\t", row.names=1, na.strings = "")
+data5C = read.table(file.path(in_dir, "mouse_8", "mouse_8-paternal-cast.tsv"), header=TRUE, sep="\t", row.names=1, na.strings = "")
 
 
 # ----------------------------------------------------------------------
