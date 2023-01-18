@@ -1,17 +1,74 @@
 
-# First need to read in the necessary files.
 
-RPKM_SRPM_Filtered <- read.table('step1_RPKM_SRPM_Filtered_AT2.csv',header=T,sep="\t")
+library(logr)
+
+
+# Input parameters
+in_dir = file.path(getwd( ), "data")
+step1_filename = 'step1_RPKM_SRPM_Filtered_AT2.tsv'
+step3_filename = 'step3_CIs_AT2.tsv'
+out_dir = file.path(getwd( ), "data")
+out_filename = 'step4_Genes_3_thresholds_FINAL_AT2.tsv'
+
+
+# Start Log
+log <- log_open(paste("step4 ", Sys.time(), '.log', sep=''))
+log_print(paste('input file 1: ', step1_filename))
+log_print(paste('input file 2: ', step3_filename))
+log_print(paste('output file 1: ', file.path(out_dir, out_filename)))
+
+
+# ----------------------------------------------------------------------
+# Read Data
+
+log_print("reading data...")
+
+RPKM_SRPM_Filtered <- read.table(
+    file.path(in_dir, step1_filename),
+    header=TRUE,
+    sep="\t"
+)
 rownames(RPKM_SRPM_Filtered) <- RPKM_SRPM_Filtered$Gene
-CIs_filtered <- read.table('step3_CIs_AT2.csv',header=T,sep="\t")
+
+CIs_filtered <- read.table(
+    file.path(in_dir, step3_filename),
+    header=TRUE,
+    sep="\t"
+)
+
+
+# ----------------------------------------------------------------------
+# Process
+
+log_print("processing...")
 
 # Match the genes in the CI list with the genes in the RPKM_SRPM list.
-
-genes_in_female <- intersect(CIs_filtered$Gene,RPKM_SRPM_Filtered$Gene)
+genes_in_female <- intersect(toupper(CIs_filtered$Gene),toupper(RPKM_SRPM_Filtered$Gene))
 genes_meeting_3_thresholds_in_female <- RPKM_SRPM_Filtered[genes_in_female,]
-colnames(genes_meeting_3_thresholds_in_female) <- c('Gene','Female Diploid Mean RPKM','Male Diploid Mean RPKM','Xi Female Mean SRPM', 'Xa Female Mean SRPM', 'X Male Mean SRPM','Xi/Xa Female SRPM')
+colnames(genes_meeting_3_thresholds_in_female) <- c(
+    'Gene',
+    'Female Diploid Mean RPKM',
+    'Male Diploid Mean RPKM',
+    'Xi Female Mean SRPM',
+    'Xa Female Mean SRPM',
+    'X Male Mean SRPM',
+    'Xi/Xa Female SRPM'
+)
 
-write.table(genes_meeting_3_thresholds_in_female, file = 'step4_Genes_3_thresholds_FINAL_AT2.csv', row.names = FALSE, sep = '\t')
+
+# ----------------------------------------------------------------------
+# Save
+
+log_print("writing dataframe...")
+write.table(
+    genes_meeting_3_thresholds_in_female,
+    file=file.path(in_dir, out_filename),
+    row.names = FALSE,
+    sep = '\t'
+)
+
+log_print(paste('End', Sys.time()))
+log_close()
 
 
 # Match the genes in the naive only CI list with the genes in the RPKM_SRPM list.

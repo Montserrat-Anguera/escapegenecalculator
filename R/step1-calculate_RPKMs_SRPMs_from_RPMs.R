@@ -23,7 +23,7 @@ log_print(paste('output file 2: ', file.path(out_dir, rpkms_and_srpms_filtered_f
 
 log_print("reading caasteij data...")
 strip_cast <- read.csv(
-    file.path(in_dir, "gtf", "exon_lengths-Mus_musculus_casteij.tsv"),
+    file.path(getwd( ), "data", "gtf", "exon_lengths-Mus_musculus_casteij.tsv"),
     na.string="NA",
     stringsAsFactors=FALSE,
     sep='\t'
@@ -32,7 +32,7 @@ strip_cast <- read.csv(
 
 log_print("reading c57bl6 data...")
 strip_b6 <- read.csv(
-    file.path(in_dir, "gtf", "exon_lengths-Mus_musculus.tsv"),
+    file.path(getwd( ), "data", "gtf","exon_lengths-Mus_musculus.tsv"),
     na.string="NA",
     stringsAsFactors=FALSE,
     sep='\t'

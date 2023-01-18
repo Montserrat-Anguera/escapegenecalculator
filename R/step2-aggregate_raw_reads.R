@@ -36,7 +36,7 @@ items_in_a_not_b <- function(a, b) {
 join_many_csv <- function(dir_path, index_cols, value_cols, sep=',') {
     filepaths <- list.files(dir_path, full.names=TRUE)
     if (length(filepaths)==0) {
-    	stop("no files found")
+        stop("no files found")
     }
     filenames = c(tools::file_path_sans_ext(basename(filepaths)))
     
@@ -116,12 +116,12 @@ mat_cols = items_in_a_not_b(colnames(mat_data_subset), c("gene_id", "gene_name",
 all_cols = c(pat_cols, mat_cols)
 
 read_summary = rbind(
-	c(colSums(pat_data[pat_cols]), colSums(mat_data[mat_cols])),  # unfiltered reads
-	colSums(all_reads[all_cols])  # reads filtered for gene_names
+    c(colSums(pat_data[pat_cols]), colSums(mat_data[mat_cols])),  # unfiltered reads
+    colSums(all_reads[all_cols])  # reads filtered for gene_names
 )
 rownames(read_summary) <- c(
-	'Sum of total reads before filtering',
-	'Sum after dropping dups & nameless genes'
+    'Sum of total reads before filtering',
+    'Sum after dropping dups & nameless genes'
 )
 
 # Save
