@@ -35,8 +35,11 @@ list_files <- function(dir_path, ext=NULL, recursive = TRUE) {
 #' 
 #' @export
 filter_list_for_match <- function(items, pattern) {
-    tmp = lapply(items, grep, pattern=pattern, value=TRUE)
-    return (unlist(tmp[!sapply(tmp, identical, character(0))]))
+    # filter
+    for (i in 1:length(pattern)){
+        items <- lapply(items, grep, pattern=pattern[[i]], value=TRUE)
+    }
+    return (unlist(items[!sapply(items, identical, character(0))]))  # remove character(0)
 }
 
 

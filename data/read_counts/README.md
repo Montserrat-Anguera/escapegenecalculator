@@ -8,7 +8,9 @@ Add tsv files to the `mouse_mat` and `mouse_pat` directories with the following 
 Group the data for each mouse, one per directory. Please follow the following naming convention for your files:
 
 ```bash
-(mouse_id)-(pat or mat)-(bl6 or cast).tsv
+(mouse_id)-(gender of mouse)-(chromosome parental origin: pat or mat)-(strain chromosome: bl6 or cast).tsv
 ```
 
-Example: `mouse_1-pat-cast.tsv`
+Example: `mouse_1-female-pat-cast.tsv`
+
+It is important that the files are named this way, because the information is used during the pipeline to distinguish between samples.

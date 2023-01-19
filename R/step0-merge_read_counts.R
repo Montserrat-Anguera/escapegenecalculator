@@ -78,6 +78,9 @@ norm_reads <- data.frame(
 )
 
 
+# ----------------------------------------------------------------------
+# Write data
+
 log_print("writing data...")
 
 write.table(
