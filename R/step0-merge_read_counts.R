@@ -1,3 +1,4 @@
+## This is a preprocessing step for downstream
 ## Takes raw_read_counts and merges them
 
 library(logr)
@@ -46,6 +47,10 @@ all_reads = merge(
     all.x=FALSE, all.y=FALSE,  # do not include null values
     na_matches = "never"
 )
+colnames(all_reads) <- sapply(
+	colnames(all_reads),
+	function(x) gsub("-", "_", as.character(x))
+)  # convert mixed_case-col_names to fully snake_case
 
 # reorder columns
 index_cols = c("gene_name", "gene_id_mat", "chromosome_mat", "gene_id_pat", "chromosome_pat")
