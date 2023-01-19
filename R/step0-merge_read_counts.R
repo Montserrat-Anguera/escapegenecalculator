@@ -2,6 +2,7 @@
 
 library(logr)
 # library("dplyr")
+source(file.path(getwd( ), "R", "utils.R"))
 
 
 # Input parameters
@@ -22,75 +23,6 @@ log_print(paste('output file 2: ', file.path(out_dir, "reads_x_only.csv")))
 log_print(paste('output file 3: ', file.path(out_dir, "normalized_reads_rpm.csv")))
 log_print(paste('output file 4: ', file.path(out_dir, "normalized_reads_rpm_x_only.csv")))
 log_print(paste('output file 5: ', file.path(out_dir, "summary.csv")))
-
-
-# ----------------------------------------------------------------------
-# Common Use Functions
-# Note: Need to figure out how to make this work from the utils.R file
-
-
-#' See: https://stackoverflow.com/questions/36396911/r-move-index-column-to-first-column
-#' 
-#' @export
-reset_index <- function(df, index_name='index') {
-    df <- cbind(index = rownames(df), df)
-    rownames(df) <- 1:nrow(df)
-    colnames(df)[colnames(df) == "index"] = index_name
-    return (df)
-}
-
-
-#' https://stackoverflow.com/questions/10298662/find-elements-not-in-smaller-character-vector-list-but-in-big-list
-#' 
-#' @export
-items_in_a_not_b <- function(a, b) {
-    return((new <- a[which(!a %in% b)]))
-}
-
-
-#' list all files in all subdirectories with a given extension
-#' 
-#' @export
-list_files <- function(dir_path, ext=NULL, recursive = TRUE) {
-    all_files = list.files(dir_path, recursive = recursive, full.name=TRUE)
-
-    if (!is.null(ext)) {
-        # See: https://stackoverflow.com/questions/7187442/filter-a-vector-of-strings-based-on-string-matching
-        return (all_files[tools::file_ext(all_files)==ext])
-    } else {
-        return (all_files)
-    }
-}
-
-
-#' Read all the csv files from a directory and left join them into a single dataframe
-#' See: https://stackoverflow.com/questions/5319839/read-multiple-csv-files-into-separate-all_reads-frames
-#' index_cols=c('gene_id', 'gene_name', 'chromosome')
-#' index_cols=c('count')
-#' 
-#' @export
-join_many_csv <- function(dir_path, index_cols, value_cols, ext='csv', recursive=TRUE, sep=',') {
-    filepaths <- list_files(dir_path, ext=ext, recursive=recursive)
-    if (length(filepaths)==0) {
-        stop(paste("no files found in: ", dir_path))
-    }
-    filenames = c(tools::file_path_sans_ext(basename(filepaths)))
-    
-    # read dfs and left join on index_cols
-    df_list <- lapply(filepaths, read.csv, sep=sep)
-
-    all_reads <- Reduce(
-        function(...) merge(..., by=index_cols),
-        lapply(df_list, "[", c(index_cols, value_cols))
-    )
-    
-    # rename columns
-    colnames(all_reads) = c(
-        index_cols,  # index_cols
-        as.list(outer(value_cols, filenames, paste, sep='-'))  # suffix value_cols with filename
-    )
-    return(all_reads)
-}
 
 
 # ----------------------------------------------------------------------

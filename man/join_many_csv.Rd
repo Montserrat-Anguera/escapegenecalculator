@@ -3,15 +3,22 @@
 \name{join_many_csv}
 \alias{join_many_csv}
 \title{Read all the csv files from a directory and left join them into a single dataframe
-See: https://stackoverflow.com/questions/5319839/read-multiple-csv-files-into-separate-data-frames
+See: https://stackoverflow.com/questions/5319839/read-multiple-csv-files-into-separate-all_reads-frames
 index_cols=c('gene_id', 'gene_name', 'chromosome')
 index_cols=c('count')}
 \usage{
-join_many_csv(dir_path, index_cols, value_cols, sep = ",")
+join_many_csv(
+  dir_path,
+  index_cols,
+  value_cols,
+  ext = "csv",
+  recursive = TRUE,
+  sep = ","
+)
 }
 \description{
 Read all the csv files from a directory and left join them into a single dataframe
-See: https://stackoverflow.com/questions/5319839/read-multiple-csv-files-into-separate-data-frames
+See: https://stackoverflow.com/questions/5319839/read-multiple-csv-files-into-separate-all_reads-frames
 index_cols=c('gene_id', 'gene_name', 'chromosome')
 index_cols=c('count')
 }
