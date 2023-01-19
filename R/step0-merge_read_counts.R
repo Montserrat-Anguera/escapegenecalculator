@@ -19,8 +19,8 @@ value_cols = 'count'
 # Start Log
 log <- log_open(paste("step0-merge_read_counts ", Sys.time(), '.log', sep=''))
 log_print(paste('input dir: ', file.path(in_dir)))
-log_print(paste('output file 1: ', file.path(out_dir, "all_reads.csv")))
-log_print(paste('output file 2: ', file.path(out_dir, "reads_x_only.csv")))
+log_print(paste('output file 1: ', file.path(out_dir, "reads_count.csv")))
+log_print(paste('output file 2: ', file.path(out_dir, "reads_count_x_only.csv")))
 log_print(paste('output file 3: ', file.path(out_dir, "normalized_reads_rpm.csv")))
 log_print(paste('output file 4: ', file.path(out_dir, "normalized_reads_rpm_x_only.csv")))
 log_print(paste('output file 5: ', file.path(out_dir, "summary.csv")))
@@ -82,7 +82,7 @@ log_print("writing data...")
 
 write.table(
     all_reads,
-    file.path(out_dir, "all_reads.csv"),
+    file.path(out_dir, "reads_count.csv"),
     row.names=FALSE,
     col.names=TRUE,
     sep=","
@@ -90,7 +90,7 @@ write.table(
 
 write.table(
     all_reads[all_reads$chromosome_mat=='X', ],
-    file.path(out_dir, "reads_x_only.csv"),
+    file.path(out_dir, "reads_count_x_only.csv"),
     row.names=FALSE,
     col.names=TRUE,
     sep=","

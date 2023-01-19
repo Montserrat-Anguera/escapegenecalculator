@@ -74,7 +74,7 @@ strip_cast <- unique(strip_cast)        # Stripping down this new df to only uni
 index_in_exonic.gene.sizes.cast <- match(strip_cast[,1], rownames(exonic.gene.sizes.cast))  # find the indexes of the entries in exonic.gene.sizes that matches the genes in the strip_cast dataframe.
 
 strip_cast[,3] <- exonic.gene.sizes.cast[index_in_exonic.gene.sizes.cast,] # Append those indexes onto the strip_cast df and rename cols. 
-colnames(strip_cast) <- c('gene_id', 'gene_name', 'exonic_length')
+colnames(strip_cast) <- c('gene_id', 'gene_name', 'exon_length')
 
 
 # ----------------------------------------------------------------------

@@ -1,54 +1,64 @@
 ## Depends on output of calculate_exon_lengths
 
 library(logr)
+source(file.path(getwd( ), "R", "utils.R"))
 
 
 # Input parameters
 ref_dir = file.path(getwd( ), "data", "ref")
-pat_exon_lengths_filepath = file.path(ref_dir, "exon_lengths-Mus_musculus_casteij.csv")
 mat_exon_lengths_filepath = file.path(ref_dir, "exon_lengths-Mus_musculus.csv")
+pat_exon_lengths_filepath = file.path(ref_dir, "exon_lengths-Mus_musculus_casteij.csv")
+index_cols = c('gene_name', 'gene_id', 'chromosome')
 
-in_dir = file.path(getwd( ), "data", "agg_reads")
-input_filename = "AT2_2022_uniqueRPM_Xchromosome_B6andCast.csv"
+in_dir = file.path(getwd( ), "data", "read_counts")
+input_filename = "normalized_reads_rpm_x_only.csv"
 out_dir = file.path(getwd( ), "data")
-joint_rpkms_filename = 'step1_joint_rpkms_AT2.csv'
+rpkms_filename = 'rpkms_x_only.csv'
 rpkms_and_srpms_filtered_filename = 'step1_RPKM_SRPM_Filtered_AT2.csv'
 
 
 # Start Log
 log <- log_open(paste("step1-calculate_rpkm_srpm ", Sys.time(), '.log', sep=''))
 log_print(paste('input file: ', file.path(in_dir, input_filename)))
-log_print(paste('output file 1: ', file.path(out_dir, joint_rpkms_filename)))
+log_print(paste('output file 1: ', file.path(out_dir, rpkms_filename)))
 log_print(paste('output file 2: ', file.path(out_dir, rpkms_and_srpms_filtered_filename)))
 
 
 # ----------------------------------------------------------------------
 # Read Data
 
-log_print("reading caasteij data...")
-strip_cast <- read.csv(
-    pat_exon_lengths_filepath,
-    na.string="NA",
-    stringsAsFactors=FALSE,
-    # row.names=1
-)
-
-log_print("reading c57bl6 data...")
-strip_b6 <- read.csv(
+log_print("reading mat exon_lengths...")
+mat_exon_lengths <- read.csv(
     mat_exon_lengths_filepath,
     na.string="NA",
     stringsAsFactors=FALSE,
     # row.names=1
 )
 
-# Import the RPM data.
-log_print("reading AT2_rpm_master...")
-AT2_rpm_master <-read.csv(
+log_print("reading pat exon_lengths...")
+pat_exon_lengths <- read.csv(
+    pat_exon_lengths_filepath,
+    na.string="NA",
+    stringsAsFactors=FALSE,
+    # row.names=1
+)
+
+# Import RPM data.
+log_print("reading normalized_reads_rpm_x_only.csv ...")
+rpm_data <-read.csv(
     file.path(in_dir, input_filename),
     na.string="NA",
     stringsAsFactors=FALSE,
-    row.names=1
+    # row.names=1
 )
+
+# misc
+mat_cols = filter_list_for_match(colnames(rpm_data), pattern='mat')
+mat_val_cols = items_in_a_not_b(mat_cols, paste(index_cols, '_mat', sep=''))
+mat_count_cols = filter_list_for_match(mat_val_cols, pattern='count')
+pat_cols = filter_list_for_match(colnames(rpm_data), pattern='pat')
+pat_val_cols = items_in_a_not_b(pat_cols, paste(index_cols, '_pat', sep=''))
+pat_count_cols = filter_list_for_match(pat_val_cols, pattern='count')
 
 
 # ----------------------------------------------------------------------
@@ -57,79 +67,49 @@ AT2_rpm_master <-read.csv(
 log_print(paste('Processing, Part 1...', Sys.time()))
 
 
-# Take a list of the genes from our RNA seq experiment. 
-our_genes <- toupper(AT2_rpm_master$name)
+# select only genes available both gtf files
+shared_genes = intersect(mat_exon_lengths[, 'gene_name'], pat_exon_lengths[, 'gene_name'])
+rpm_data <- reset_index(rpm_data)
+rownames(rpm_data) <- rpm_data[, 'gene_name']
+rpm_data <- (rpm_data[intersect(rpm_data[, 'gene_name'], shared_genes),])  # filter genes shared by both gtf files
+rownames(rpm_data) <- rpm_data[, 'index']  # optional preserve index for troubleshooting
 
 
-# Filter the strip_cast dataframe by matching to the genes we have rpm values for.
-# Also, remove any rows with NAs if applicable. 
-strip_cast[,2] <- toupper(strip_cast[,2])
-strip_b6[,2] <- toupper(strip_b6[,2])
-strip_cast_wlengths <- strip_cast[match(our_genes, strip_cast[,2]),]
+# inner join exon_length data
+rpm_data <- merge(
+    rpm_data,
+    pat_exon_lengths,
+    by.x=c("gene_name", "gene_id_pat"),
+    by.y=c("gene_name", "gene_id"),
+    all.x=FALSE, all.y=FALSE,  # do not include null values
+    na_matches = "never"
+)
+
+rpm_data <- merge(
+    rpm_data,
+    mat_exon_lengths,
+    by.x=c("gene_name", "gene_id_mat"),
+    by.y=c("gene_name", "gene_id"),
+    suffixes=c('_mat', '_pat'),
+    all.x=FALSE, all.y=FALSE,  # do not include null values
+    na_matches = "never"
+)
 
 
-# Make dataframe with the cast genes, including the total exon length and the rpm values from our experiment.
-# Also, remove any rows with NAs if applicable. 
-cast_wlengths_rpm <- cbind(strip_cast_wlengths, AT2_rpm_master[,c(8:12)])
-cast_wlengths_rpm_filtered <- cast_wlengths_rpm[complete.cases(cast_wlengths_rpm),]
+# RPKM calculation
+rpm_data[, mat_count_cols] <- rpm_data[mat_count_cols]/rpm_data[,"exon_length_mat"]*1000
+rpm_data[, pat_count_cols] <- rpm_data[pat_count_cols]/rpm_data[,"exon_length_pat"]*1000
+colnames(rpm_data) <- gsub('count', 'rpkm', colnames(rpm_data))
 
 
-# Do the same for the s129 genome. 
-strip_b6_wlengths <- strip_b6[match(our_genes, strip_b6[,2]),]
-b6_wlengths_rpm <- cbind(strip_b6_wlengths, AT2_rpm_master[,c(3:7)])
-b6_wlengths_rpm_filtered <- b6_wlengths_rpm[complete.cases(b6_wlengths_rpm),]
-
-
-# Create a function to remove the data from the dataframe with more genes (cast, 1071) by comparing to the gene_names in the dataframe with less genes (b6, 1042). 
-# HAD TO RUN TWICE!
-#B6 HAS MORE IN 2022 SO will be switching the below around 
-'%!in%' <- function(x,y)!('%in%'(x,y))
-
-for (i in 1:nrow(b6_wlengths_rpm_filtered)) {
-    if (b6_wlengths_rpm_filtered[i,2] %!in% cast_wlengths_rpm_filtered$gene_name) {
-        b6_wlengths_rpm_filtered <- b6_wlengths_rpm_filtered[-c(i),]
-    }
-}
-
-'%!in%' <- function(x,y)!('%in%'(x,y))
-
-for (i in 1:nrow(cast_wlengths_rpm_filtered)) {
-    if (cast_wlengths_rpm_filtered[i,2] %!in% b6_wlengths_rpm_filtered$gene_name) {
-        cast_wlengths_rpm_filtered <- cast_wlengths_rpm_filtered[-c(i),]
-    }
-}
-
-
-# Now need to do the actual RPKM calculation. Do this for the cast genes first. 
-cast_rpkm <- cast_wlengths_rpm_filtered
-for (i in 1:nrow(cast_rpkm)) {
-    cast_rpkm[i,c(4,5,6,7,8)] <- (cast_rpkm[i,c(4,5,6,7,8)]/cast_rpkm[i,3]*1000)
-}
-
-
-# Do this for s129. 
-b6_rpkm <- b6_wlengths_rpm_filtered
-for (i in 1:nrow(b6_rpkm)) {
-    b6_rpkm[i,c(4,5,6,7,8)] <- (b6_rpkm[i,c(4,5,6,7,8)]/b6_rpkm[i,3]*1000)
-}
-
-
-#Checks to see if the gene lists are, in fact, identical
-identical(b6_rpkm[['gene_name']],cast_rpkm[['gene_name']])
-
-
-# Calculate RPKMs for diploid gene expression.
-# Bind data frames.
-joint_rpkms <- cbind(cast_rpkm,b6_rpkm)
-
-
-# Write joint_rpkms to a file for use elsewhere.
+# Write rpkms to file
 log_print("writing joint_rpkms...")
 if (!file.exists(out_dir)) {
     dir.create(out_dir)
 }
-write.table(joint_rpkms,
-    file = file.path(out_dir, joint_rpkms_filename),
+write.table(
+    rpm_data[items_in_a_not_b(colnames(rpm_data), "index")],
+    file = file.path(out_dir, rpkms_filename),
     row.names = FALSE,
     sep=','
 )
@@ -187,10 +167,10 @@ diploid_final_master <- rbind(diploid_final_both,diploid_final_female_only, dipl
 log_print(paste('Calculating SRPMs...', Sys.time()))
 
 # First create a dataframe for the srpm calculation using the dataframe of all of the diploid RPKM values. 
-srpms <- AT2_rpm_master[match(toupper(diploid_final_master$Gene), toupper(AT2_rpm_master$name)),]
-rownames(srpms) <- srpms$name
+srpms <- rpm_data[match(toupper(diploid_final_master$Gene), toupper(rpm_data$gene_name)),]
+rownames(srpms) <- srpms$gene_name
 
-# Remove the gene name and chromosome columns.
+# Remove the gene gene_name and chromosome columns.
 srpms <- srpms[,-c(1,2)]
 
 # Then do the SRPM calculation, which is multiplying haploid rpm by 10 to get allele-specific SNP containing exonic reads per 10 million uniquely mapped reads. 

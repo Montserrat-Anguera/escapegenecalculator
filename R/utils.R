@@ -1,15 +1,8 @@
 ## Common use functions
 
 
-#' See: https://stackoverflow.com/questions/36396911/r-move-index-column-to-first-column
-#' 
-#' @export
-reset_index <- function(df, index_name='index') {
-    df <- cbind(index = rownames(df), df)
-    rownames(df) <- 1:nrow(df)
-    colnames(df)[colnames(df) == "index"] = index_name
-    return (df)
-}
+# ----------------------------------------------------------------------
+# List tools
 
 
 #' https://stackoverflow.com/questions/10298662/find-elements-not-in-smaller-character-vector-list-but-in-big-list
@@ -33,6 +26,37 @@ list_files <- function(dir_path, ext=NULL, recursive = TRUE) {
         return (all_files)
     }
 }
+
+
+#' return elements of a list matching a particular substring
+#'
+#' @examples
+#' filter_list_for_match(c("gene_id_pat", "gene_id_mat", "count"), "pat")
+#' 
+#' @export
+filter_list_for_match <- function(items, pattern) {
+    tmp = lapply(items, grep, pattern=pattern, value=TRUE)
+    return (unlist(tmp[!sapply(tmp, identical, character(0))]))
+}
+
+
+# ----------------------------------------------------------------------
+# Dataframe manipulation
+
+
+#' See: https://stackoverflow.com/questions/36396911/r-move-index-column-to-first-column
+#' 
+#' @export
+reset_index <- function(df, index_name='index') {
+    df <- cbind(index = rownames(df), df)
+    rownames(df) <- 1:nrow(df)
+    colnames(df)[colnames(df) == "index"] = index_name
+    return (df)
+}
+
+
+# ----------------------------------------------------------------------
+# File IO
 
 
 #' Read all the csv files from a directory and left join them into a single dataframe
