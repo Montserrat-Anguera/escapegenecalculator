@@ -1,14 +1,14 @@
 ## Takes the output of step2
 
-
 library(logr)
+source(file.path(getwd( ), "R", "utils.R"))
 
 # Input parameters
-in_dir = file.path(getwd( ), "data")
-all_reads_filename = "step2_all_reads_AT2.csv"
-read_summary_filename = "step2_read_summary_AT2.csv"
+in_dir = file.path(getwd( ), "data", "read_counts")
+all_reads_filename = "reads_count.csv"
+read_summary_filename = "summary.csv"
 out_dir = file.path(getwd( ), "data")
-out_filename = 'step3_CIs_AT2.csv'
+out_filename = 'confidence_intervals.csv'
 
 # Provide a z-score to be used in the confidence interval.
 zscore <- qnorm(0.975)
@@ -28,18 +28,59 @@ log_print("reading data...")
 
 # Read output of step2
 all_reads = read.csv(file.path(in_dir, all_reads_filename), header=TRUE, sep=',', check.names=FALSE)
-
 # Now read in the reads file and isolate just the X linked reads.
-X_reads <- all_reads[all_reads$chromosome == 'X',]
+x_reads <- all_reads[all_reads$chromosome_mat == 'X',]  # should just import the X chromsome list...
+
+
+# keep this around for troubleshooting until done
+# read_summary <- read.csv(
+# 	'/home/harrisonized/Documents/Work/Lab/Anguera Lab/raw_files/AT2_inputfiles_perhaps/step2_read_summary_AT2.csv',
+#     header=TRUE, sep=',', check.names=FALSE
+# )
+
+
+
+# read summary
 read_summary <- read.csv(file.path(in_dir, read_summary_filename), header=TRUE, sep=",", check.names=FALSE)
 
+# Pivot data
+read_summary['chromosomal_parentage'] = gsub('-', '', stringr::str_extract(read_summary[,'mouse_id'], '-mat-|-pat-'))
 
-# Now I need to calculate the mapping biases for each sample. This is defined as total reads from Xi genome divided by total reads from Xa genome.
+# should figure out how to suppress this warning
+read_summary <- pivot(
+	read_summary[c('mouse_id', 'chromosomal_parentage', 'all_reads', 'filtered_reads')],
+	columns=c('chromosomal_parentage'),
+	values=c('mouse_id', 'all_reads', 'filtered_reads')
+)
+read_summary['bias_xi_div_xa'] = read_summary['all_reads_pat']/read_summary['all_reads_mat']
+
+
+
+# This is defined as total reads from Xi genome divided by total reads from Xa genome.
+x_reads['mouse_1_total_reads'] = x_reads['count_mouse_1_female_mat_bl6'] + x_reads['count_mouse_1_female_pat_cast']
+x_reads['mouse_1_pct_xi'] = x_reads['count_mouse_1_female_pat_cast'] / x_reads['mouse_1_total_reads']
+
+mouse_1_bias = read_summary[, 'bias_xi_div_xa'][1]  # need to think about how to pivot this back properly
+
+x_reads['mouse_1_pct_xi_formula'] <- (x_reads['mouse_1_pct_xi'])/(x_reads['mouse_1_pct_xi']+mouse_1_bias*(1-x_reads['mouse_1_pct_xi']))
+
+x_reads['mouse_1_lower_bound'] <- x_reads['mouse_1_pct_xi_formula'] - (zscore)*(sqrt((x_reads['mouse_1_pct_xi_formula'])*(1-x_reads['mouse_1_pct_xi_formula'])/x_reads['mouse_1_total_reads']))
+x_reads[, 'mouse_1_lower_bound'][is.na(x_reads[, 'mouse_1_lower_bound'])] <- 0
+x_reads['mouse_1_upper_bound'] <- x_reads['mouse_1_pct_xi_formula'] + (zscore)*(sqrt((x_reads['mouse_1_pct_xi_formula'])*(1-x_reads['mouse_1_pct_xi_formula'])/x_reads['mouse_1_total_reads']))
+x_reads[, 'mouse_1_upper_bound'][is.na(x_reads[, 'mouse_1_upper_bound'])] <- 0
+
+
+
+# Deprecate below
+
+
+
+# Now I need to calculate the mapping biases for each sample.
+# This is defined as total reads from Xi genome divided by total reads from Xa genome.
 # Denoted as Rm.
-Rm_female_sample1 <- read_summary[1,1]/read_summary[1,6]
-Rm_female_sample2 <- read_summary[1,2]/read_summary[1,7]
-Rm_female_sample3 <- read_summary[1,3]/read_summary[1,8]
-Rm_female_sample4 <- read_summary[1,4]/read_summary[1,9]
+Rm_female_sample1 <- read_summary[1,1]/read_summary[1,4]  # check this
+Rm_female_sample2 <- read_summary[1,2]/read_summary[1,5]
+Rm_female_sample3 <- read_summary[1,3]/read_summary[1,6]
 
 
 # ----------------------------------------------------------------------
@@ -48,37 +89,37 @@ Rm_female_sample4 <- read_summary[1,4]/read_summary[1,9]
 
 # Next, impliment the model from Berletch et al for the first sample.
 # This will be heavily annotated, remainder of samples will not be. 
-ni0_female1 <- c()
-ni_female1 <- c()
+ni0_mouse_1 <- c()
+ni_mouse_1 <- c()
 
 
 # Create a vector for the reads from the inactive X and a vector for the total reads from one sample (Xi + Xa).  
-for (i in 1:nrow(X_reads)) {
-  ni0_female1 <- c(ni0_female1, X_reads[,4][i])
+for (i in 1:nrow(x_reads)) {
+  ni0_mouse_1 <- c(ni0_mouse_1, x_reads[,1][i])
 }
 
-for (i in 1:nrow(X_reads)) {
-  ni_female1 <- c(ni_female1, (X_reads[,4][i] + X_reads[,10][i]))
+for (i in 1:nrow(x_reads)) {
+  ni_mouse_1 <- c(ni_mouse_1, (x_reads[,1][i] + x_reads[,4][i]))
 }
 
 # Calculate phat, which is the proportion of total reads per gene coming from the Xi. 
-phat_female1 <- ni0_female1/ni_female1
-phat_female1 <- ifelse(is.nan(phat_female1),0,phat_female1)
+phat_mouse_1 <- ni0_mouse_1/ni_mouse_1
+phat_mouse_1 <- ifelse(is.nan(phat_mouse_1),0,phat_mouse_1)
 
 # Part of the corrected formula.
-phat_formula_female1 <- (phat_female1)/(phat_female1+Rm_female_sample1*(1-phat_female1))
+phat_formula_mouse_1 <- (phat_mouse_1)/(phat_mouse_1+Rm_female_sample1*(1-phat_mouse_1))
 
 # Create the lower and upper bounds, using the formula. 
-lower_bound_female1 <- phat_formula_female1 - (zscore)*(sqrt((phat_formula_female1)*(1-phat_formula_female1)/ni_female1))
-lower_bound_female1 <- ifelse(is.nan(lower_bound_female1),0,lower_bound_female1)
-upper_bound_female1 <- phat_formula_female1 + (zscore)*(sqrt((phat_formula_female1)*(1-phat_formula_female1)/ni_female1))
-upper_bound_female1 <- ifelse(is.nan(upper_bound_female1),0,upper_bound_female1)
+x_reads['mouse_1_lower_bound'] <- phat_formula_mouse_1 - (zscore)*(sqrt((phat_formula_mouse_1)*(1-phat_formula_mouse_1)/ni_mouse_1))
+x_reads['mouse_1_lower_bound'] <- ifelse(is.nan(x_reads['mouse_1_lower_bound']),0,x_reads['mouse_1_lower_bound'])
+x_reads['mouse_1_upper_bound'] <- phat_formula_mouse_1 + (zscore)*(sqrt((phat_formula_mouse_1)*(1-phat_formula_mouse_1)/ni_mouse_1))
+x_reads['mouse_1_upper_bound'] <- ifelse(is.nan(x_reads['mouse_1_upper_bound']),0,x_reads['mouse_1_upper_bound'])
 
 # Create the data frame, which has 3 columns: Gene, lower bound, and upper bound. 
-female1 <- data.frame(
-    'Gene' = X_reads[,1],
-    'Lower Bound' = lower_bound_female1,
-    'Upper Bound' = upper_bound_female1,
+mouse_1 <- data.frame(
+    'Gene' = x_reads[,1],
+    'Lower Bound' = x_reads['mouse_1_lower_bound'],
+    'Upper Bound' = x_reads['mouse_1_upper_bound'],
     stringsAsFactors = FALSE
 )
 
@@ -89,12 +130,12 @@ female1 <- data.frame(
 ni_female2 <- c()
 ni0_female2 <- c()
 
-for (i in 1:nrow(X_reads)) {
-  ni0_female2 <- c(ni0_female2, X_reads[,5][i])
+for (i in 1:nrow(x_reads)) {
+  ni0_female2 <- c(ni0_female2, x_reads[,5][i])
 }
 
-for (i in 1:nrow(X_reads)) {
-  ni_female2 <- c(ni_female2, (X_reads[,5][i] + X_reads[,11][i]))
+for (i in 1:nrow(x_reads)) {
+  ni_female2 <- c(ni_female2, (x_reads[,5][i] + x_reads[,11][i]))
 }
 
 phat_female2 <- ni0_female2/ni_female2
@@ -106,7 +147,7 @@ lower_bound_female2 <- ifelse(is.nan(lower_bound_female2),0,lower_bound_female2)
 upper_bound_female2 <- phat_formula_female2 + (zscore)*(sqrt((phat_formula_female2)*(1-phat_formula_female2)/ni_female2))
 upper_bound_female2 <- ifelse(is.nan(upper_bound_female2),0,upper_bound_female2)
 
-female2 <- data.frame('Gene' = X_reads[,1], 'Lower Bound' = lower_bound_female2, 'Upper Bound' = upper_bound_female2, stringsAsFactors = FALSE)
+female2 <- data.frame('Gene' = x_reads[,1], 'Lower Bound' = lower_bound_female2, 'Upper Bound' = upper_bound_female2, stringsAsFactors = FALSE)
 
 
 # ----------------------------------------------------------------------
@@ -115,12 +156,12 @@ female2 <- data.frame('Gene' = X_reads[,1], 'Lower Bound' = lower_bound_female2,
 ni_female3 <- c()
 ni0_female3 <- c()
 
-for (i in 1:nrow(X_reads)) {
-  ni0_female3 <- c(ni0_female3, X_reads[,6][i])
+for (i in 1:nrow(x_reads)) {
+  ni0_female3 <- c(ni0_female3, x_reads[,6][i])
 }
 
-for (i in 1:nrow(X_reads)) {
-  ni_female3 <- c(ni_female3, (X_reads[,6][i] + X_reads[,12][i]))
+for (i in 1:nrow(x_reads)) {
+  ni_female3 <- c(ni_female3, (x_reads[,6][i] + x_reads[,12][i]))
 }
 
 phat_female3 <- ni0_female3/ni_female3
@@ -132,7 +173,7 @@ lower_bound_female3 <- ifelse(is.nan(lower_bound_female3),0,lower_bound_female3)
 upper_bound_female3 <- phat_formula_female3 + (zscore)*(sqrt((phat_formula_female3)*(1-phat_formula_female3)/ni_female3))
 upper_bound_female3 <- ifelse(is.nan(upper_bound_female3),0,upper_bound_female3)
 
-female3 <- data.frame('Gene' = X_reads[,1], 'Lower Bound' = lower_bound_female3, 'Upper Bound' = upper_bound_female3, stringsAsFactors = FALSE)
+female3 <- data.frame('Gene' = x_reads[,1], 'Lower Bound' = lower_bound_female3, 'Upper Bound' = upper_bound_female3, stringsAsFactors = FALSE)
 
 
 # ----------------------------------------------------------------------
@@ -141,12 +182,12 @@ female3 <- data.frame('Gene' = X_reads[,1], 'Lower Bound' = lower_bound_female3,
 ni_female4 <- c()
 ni0_female4 <- c()
 
-for (i in 1:nrow(X_reads)) {
-  ni0_female4 <- c(ni0_female4, X_reads[,7][i])
+for (i in 1:nrow(x_reads)) {
+  ni0_female4 <- c(ni0_female4, x_reads[,7][i])
 }
 
-for (i in 1:nrow(X_reads)) {
-  ni_female4 <- c(ni_female4, (X_reads[,7][i] + X_reads[,13][i]))
+for (i in 1:nrow(x_reads)) {
+  ni_female4 <- c(ni_female4, (x_reads[,7][i] + x_reads[,13][i]))
 }
 
 phat_female4 <- ni0_female4/ni_female4
@@ -158,7 +199,7 @@ lower_bound_female4 <- ifelse(is.nan(lower_bound_female4),0,lower_bound_female4)
 upper_bound_female4 <- phat_formula_female4 + (zscore)*(sqrt((phat_formula_female4)*(1-phat_formula_female4)/ni_female4))
 upper_bound_female4 <- ifelse(is.nan(upper_bound_female4),0,upper_bound_female4)
 
-female4 <- data.frame('Gene' = X_reads[,1], 'Lower Bound' = lower_bound_female4, 'Upper Bound' = upper_bound_female4, stringsAsFactors = FALSE)
+female4 <- data.frame('Gene' = x_reads[,1], 'Lower Bound' = lower_bound_female4, 'Upper Bound' = upper_bound_female4, stringsAsFactors = FALSE)
 
 
 # ----------------------------------------------------------------------
@@ -166,8 +207,8 @@ female4 <- data.frame('Gene' = X_reads[,1], 'Lower Bound' = lower_bound_female4,
 
 # Want to identify the genes that meet the CI threshold in naive or stimulated but not both, in addition to the genes that meet the threshold in both.
 
-unfiltered_CIs <- cbind(female1[,1:3],female2[,2:3],female3[,2:3],female4[,2:3])
-colnames(unfiltered_CIs) <- c('Gene','Female1_Lower','Female1_Upper','Female2_Lower','Female2_Upper','Female3_Lower','Female3_Upper','Female4_Lower','Female4_Upper')
+unfiltered_CIs <- cbind(mouse_1[,1:3],female2[,2:3],female3[,2:3],female4[,2:3])
+colnames(unfiltered_CIs) <- c('Gene','mouse_1_Lower','mouse_1_Upper','Female2_Lower','Female2_Upper','Female3_Lower','Female3_Upper','Female4_Lower','Female4_Upper')
 
 
 # Identifying the genes in naive samples that have lower bound greater than 0 in all 4 replicates, putting them in a df called 'naive_triplicate_threshold'.

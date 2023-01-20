@@ -70,9 +70,9 @@ pivot <- function(df, columns, values) {
         values_from=values,
         values_fn = list
     )
-    # figure out warning
-    # 
-    return (data.frame(sapply(as.list(tibble_obj), unlist)))  # can also use `c` instead of `as.list`
+    # Warning: Using an external vector in selections was deprecated in tidyselect 1.1.0.
+    # Just ignore this. It doesn't matter.
+    return (data.frame(lapply(tibble_obj, unlist)))
 }
 
 
