@@ -58,6 +58,24 @@ reset_index <- function(df, index_name='index') {
 }
 
 
+#' This took an unbelievably long time to figure out
+#' tidyr returns a tibble object instead of a dataframe
+#' This function returns a dataframe
+#' 
+#' @export
+pivot <- function(df, columns, values) {
+    tibble_obj = tidyr::pivot_wider(
+        df,
+        names_from=columns,
+        values_from=values,
+        values_fn = list
+    )
+    # figure out warning
+    # 
+    return (data.frame(sapply(as.list(tibble_obj), unlist)))  # can also use `c` instead of `as.list`
+}
+
+
 # ----------------------------------------------------------------------
 # File IO
 
