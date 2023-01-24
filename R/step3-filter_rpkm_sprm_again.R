@@ -1,3 +1,4 @@
+## Should combine this with step1
 
 library(logr)
 source(file.path(getwd( ), "R", "utils.R"))
@@ -12,7 +13,7 @@ out_filename = 'filtered_srpm_data_2.csv'  # will get rid of this entirely later
 
 
 # Start Log
-log <- log_open(paste("step4-match_rpkm_srpm_confidence_intervals ", Sys.time(), '.log', sep=''))
+log <- log_open(paste("step3-filter_rpkm_sprm_again ", Sys.time(), '.log', sep=''))
 log_print(paste('input file 1: ', filtered_srpm_data_filename))
 log_print(paste('input file 2: ', ci_data_filename))
 log_print(paste('output file 1: ', file.path(out_dir, out_filename)))

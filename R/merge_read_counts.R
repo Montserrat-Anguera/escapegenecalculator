@@ -1,5 +1,7 @@
 ## This is a preprocessing step for downstream
-## Takes raw_read_counts and merges them
+## Merges raw files from the read_counts dir
+## Generates a summary file
+
 
 library(logr)
 # library("dplyr")
@@ -17,13 +19,14 @@ value_cols = 'count'
 
 
 # Start Log
-log <- log_open(paste("step0-merge_read_counts ", Sys.time(), '.log', sep=''))
+log <- log_open(paste("merge_read_counts ", Sys.time(), '.log', sep=''))
 log_print(paste('input dir: ', file.path(in_dir)))
 log_print(paste('output file 1: ', file.path(out_dir, "reads_count.csv")))
 log_print(paste('output file 2: ', file.path(out_dir, "reads_count_x_only.csv")))
 log_print(paste('output file 3: ', file.path(out_dir, "normalized_reads_rpm.csv")))
 log_print(paste('output file 4: ', file.path(out_dir, "normalized_reads_rpm_x_only.csv")))
 log_print(paste('output file 5: ', file.path(out_dir, "summary.csv")))
+log_print(paste('output file 6: ', file.path(out_dir, "summary_long.csv")))
 
 
 # ----------------------------------------------------------------------
@@ -35,7 +38,7 @@ mat_data = join_many_csv(mat_dir, index_cols=index_cols, value_cols=value_cols, 
 
 
 # ----------------------------------------------------------------------
-# Processing
+# Merge Read Counts
 
 log_print("processing...")
 
@@ -78,42 +81,16 @@ norm_reads <- data.frame(
 )
 
 
-# ----------------------------------------------------------------------
-# Write data
-
 log_print("writing data...")
 
-write.table(
-    all_reads,
-    file.path(out_dir, "reads_count.csv"),
-    row.names=FALSE,
-    col.names=TRUE,
-    sep=","
-)
-
-write.table(
-    all_reads[all_reads$chromosome_mat=='X', ],
-    file.path(out_dir, "reads_count_x_only.csv"),
-    row.names=FALSE,
-    col.names=TRUE,
-    sep=","
-)
-
-write.table(
-    norm_reads,
-    file.path(out_dir, "normalized_reads_rpm.csv"),
-    row.names=FALSE,
-    col.names=TRUE,
-    sep=","
-)
-
-write.table(
-    norm_reads[norm_reads$chromosome_mat=='X', ],
-    file.path(out_dir, "normalized_reads_rpm_x_only.csv"),
-    row.names=FALSE,
-    col.names=TRUE,
-    sep=","
-)
+write.table(all_reads, file.path(out_dir, "reads_count.csv"),
+            row.names=FALSE, col.names=TRUE, sep=",")
+write.table(all_reads[all_reads$chromosome_mat=='X', ], file.path(out_dir, "reads_count_x_only.csv"),
+	        row.names=FALSE, col.names=TRUE, sep=",")
+write.table(norm_reads, file.path(out_dir, "normalized_reads_rpm.csv"),
+            row.names=FALSE, col.names=TRUE, sep=",")
+write.table(norm_reads[norm_reads$chromosome_mat=='X', ], file.path(out_dir, "normalized_reads_rpm_x_only.csv"),
+            row.names=FALSE, col.names=TRUE, sep=",")
 
 
 # ----------------------------------------------------------------------
@@ -133,16 +110,28 @@ summary = reset_index(summary, 'mouse_id')
 # replace the count prefix in the mouse_id col
 summary[, 'mouse_id'] <- sapply(summary[, 'mouse_id'], function(x) gsub("count-", "", as.character(x)))
 
+
+summary['mouse_name'] = stringr::str_extract(summary[,'mouse_id'], 'mouse_[0-9]+')
+summary['mouse_gender'] = gsub('-', '', stringr::str_extract(summary[,'mouse_id'], '-female-|-male-'))
+summary['chromosomal_parentage'] = gsub('-', '', stringr::str_extract(summary[,'mouse_id'], '-mat-|-pat-'))
+
+
+# should figure out how to suppress this warning
+summary_long <- pivot(
+    summary[c('mouse_id', 'mouse_name', 'mouse_gender', 'chromosomal_parentage', 'all_reads', 'filtered_reads')],
+    columns=c('chromosomal_parentage'),
+    values=c('mouse_id', 'all_reads', 'filtered_reads')
+)
+summary_long['bias_xi_div_xa'] = summary_long['all_reads_pat']/summary_long['all_reads_mat']
+
+
+
 # Save
 log_print("writing summary...")
-write.table(
-    summary,
-    file.path(out_dir, 'summary.csv'),
-    quote=FALSE,
-    col.names=TRUE,
-    row.names=FALSE,
-    sep=','
-)
+write.table(summary, file.path(out_dir, 'summary.csv'),
+            quote=FALSE, col.names=TRUE, row.names=FALSE, sep=',')
+write.table(summary, file.path(out_dir, 'summary_long.csv'),
+            quote=FALSE, col.names=TRUE, row.names=FALSE, sep=',')
 
 log_print(paste('End', Sys.time()))
 log_close()

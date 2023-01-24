@@ -16,7 +16,7 @@ zscore <- qnorm(0.975)
 
 
 # Start Log
-log <- log_open(paste("step3-calculate_confidence_intervals ", Sys.time(), '.log', sep=''))
+log <- log_open(paste("step1-calculate_confidence_intervals ", Sys.time(), '.log', sep=''))
 log_print(paste('x_reads file: ', file.path(in_dir, x_reads_filename)))
 log_print(paste('read_summary file: ', file.path(in_dir, read_summary_filename)))
 log_print(paste('output file: ', file.path(out_dir, out_filename)))

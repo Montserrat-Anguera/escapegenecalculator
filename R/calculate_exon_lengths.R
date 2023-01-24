@@ -33,22 +33,22 @@ log_print(paste('output file: ', file.path(out_dir, out_filename)))
 
 # Import gtf data
 log_print("Importing gtf data...")
-# gtf_cast <- rtracklayer::import('data/gtf/Mus_musculus.GRCm38.87.gtf')
-# gtf_cast <- rtracklayer::import('data/gtf/Mus_musculus_casteij.CAST_EiJ_v1.108.gtf')
-gtf_cast <- rtracklayer::import(
+# gtf <- rtracklayer::import('data/gtf/Mus_musculus.GRCm38.87.gtf')
+# gtf <- rtracklayer::import('data/gtf/Mus_musculuseij.CAST_EiJ_v1.108.gtf')
+gtf_data <- rtracklayer::import(
     file.path(in_dir, in_filename)
 )
-gtf_cast_df <- as.data.frame(gtf_cast, stringsAsFactors = FALSE)
-test_cast <- gtf_cast_df[is.na(gtf_cast_df$gene_name) == FALSE & gtf_cast_df$seqnames == 'X',]
-# cast_filtered <- test_cast[,c(1,2,3,4,7,10,23)]
-cast_filtered <- test_cast[,c(1,2,3,4,7,10,15)]
+gtf_df <- as.data.frame(gtf_data, stringsAsFactors = FALSE)
+gtf_df_x_only <- gtf_df[is.na(gtf_df$gene_name) == FALSE & gtf_df$seqnames == 'X',]
+# gtf_subset <- gtf_df_x_only[,c(1,2,3,4,7,10,23)]
+gtf_subset <- gtf_df_x_only[,c(1,2,3,4,7,10,15)]  # this is bad
 
 
 
 # First, import the GTF-file that you have also used as input for htseq-count
 start_time = Sys.time()
 log_print(paste("Making TxDb from GTF...", start_time))
-txdb_cast <- makeTxDbFromGFF(
+txdb <- makeTxDbFromGFF(
     file.path(in_dir, in_filename),
     format="gtf"
 )
@@ -61,20 +61,20 @@ log_print(paste('time of operation... ', end_time - start_time))
 # Processing
 
 # then collect the exons per gene id
-exons.list.per.gene.cast <- exonsBy(txdb_cast,by="gene")
+exons.list.per.gene.cast <- exonsBy(txdb,by="gene")
 
 # then for each gene, reduce all the exons to a set of non overlapping exons, calculate their lengths (widths) and sum then
 exonic.gene.sizes.cast <- as.data.frame(sum(width(reduce(exons.list.per.gene.cast))))
 
-# try to match exonic lengths to genes on the X using the cast_filtered df and exonic.gene.sizes df.
+# try to match exonic lengths to genes on the X using the gtf_subset df and exonic.gene.sizes df.
 
-strip_cast <- cast_filtered[,c(6,7)]    # Pulling out just gene_ids and gene_names from the gtf file
-strip_cast <- unique(strip_cast)        # Stripping down this new df to only unique instances
+final_data <- gtf_subset[,c(6,7)]    # Pulling out just gene_ids and gene_names from the gtf file
+final_data <- unique(final_data)        # final_dataping down this new df to only unique instances
 
-index_in_exonic.gene.sizes.cast <- match(strip_cast[,1], rownames(exonic.gene.sizes.cast))  # find the indexes of the entries in exonic.gene.sizes that matches the genes in the strip_cast dataframe.
+index_in_exonic.gene.sizes.cast <- match(final_data[,1], rownames(exonic.gene.sizes.cast))  # find the indexes of the entries in exonic.gene.sizes that matches the genes in the final_data dataframe.
 
-strip_cast[,3] <- exonic.gene.sizes.cast[index_in_exonic.gene.sizes.cast,] # Append those indexes onto the strip_cast df and rename cols. 
-colnames(strip_cast) <- c('gene_id', 'gene_name', 'exon_length')
+final_data[,3] <- exonic.gene.sizes.cast[index_in_exonic.gene.sizes.cast,] # Append those indexes onto the final_data df and rename cols. 
+colnames(final_data) <- c('gene_id', 'gene_name', 'exon_length')
 
 
 # ----------------------------------------------------------------------
@@ -85,7 +85,7 @@ if (!file.exists(out_dir)) {
     dir.create(out_dir)
 }
 write.table(
-    strip_cast,
+    final_data,
     file = file.path(out_dir, out_filename),
     col.names = TRUE,
     row.names = FALSE,

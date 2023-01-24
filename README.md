@@ -45,16 +45,15 @@ Run the following from command line:
 ```bash
 cd escapegenecalculator
 
-# generate intermediate files for use in step1
-Rscript R/calculate_exon_lengths.R
-Rscript R/calculate_chromosome_lengths.R  # this takes 5 minutes
+# generate metadata files for use downstream
+Rscript R/calculate_exon_lengths.R  # ~1 minute, required
+Rscript R/extract_chromosome_lengths.R  # ~5 minutes, optional
 
 # Go through the steps
-Rscript R/step0-merge_read_counts.R
-Rscript R/step1-calculate_RPKMs_SRPMs_from_RPMs.R
-Rscript R/step2-aggregate_raw_reads.R
-Rscript R/step3-CI_calculation.R
-Rscript R/step4-match_CIs_RPKM_SRPM.R
+Rscript R/merge_read_counts.R
+Rscript R/step1-calculate_confidence_intervals.R
+Rscript R/step2-calculate_rpkm_srpm.R
+Rscript R/step3-filter_rpkm_sprm_again  # will be deleting this
 ```
 
 

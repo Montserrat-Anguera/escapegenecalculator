@@ -14,7 +14,7 @@ out_filename = paste("chr_lengths-", species, ".csv", sep='')
 
 
 # Start Log
-log <- log_open(paste("calculate_chromosome_lengths ", Sys.time(), '.log', sep=''))
+log <- log_open(paste("extract_chromosome_lengths ", Sys.time(), '.log', sep=''))
 log_print(paste('input file: ', file.path(in_dir, in_filename)))
 log_print(paste('output file: ', file.path(out_dir, out_filename)))
 

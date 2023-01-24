@@ -58,8 +58,6 @@ reset_index <- function(df, index_name='index') {
 }
 
 
-#' Because I can never remember how to do this
-#' 
 #' @export
 filter_dataframe_column_by_list <- function(dataframe, colname, items, index_name='index', return_index=FALSE) {
     
@@ -76,7 +74,6 @@ filter_dataframe_column_by_list <- function(dataframe, colname, items, index_nam
 }
 
 
-#' This took an unbelievably long time to figure out
 #' tidyr returns a tibble object instead of a dataframe
 #' This function returns a dataframe
 #' 

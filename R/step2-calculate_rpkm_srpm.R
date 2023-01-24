@@ -19,7 +19,7 @@ filtered_srpm_data_filename = 'filtered_srpm_data.csv'
 
 
 # Start Log
-log <- log_open(paste("step1-calculate_rpkm_srpm ", Sys.time(), '.log', sep=''))
+log <- log_open(paste("step2-calculate_rpkm_srpm ", Sys.time(), '.log', sep=''))
 log_print(paste('input file: ', file.path(in_dir, input_filename)))
 log_print(paste('output file 1: ', file.path(out_dir, rpkm_data_filename)))
 # log_print(paste('output file 2: ', file.path(out_dir, srpms_filename)))  # troubleshooting
@@ -153,17 +153,6 @@ metadata_cols = c(
 	'male_mean_rpkm_gt_1',
 	'female_xi_mean_srpm_gte_2'
 )
-
-# troubleshooting
-# write.table(
-#     # filtered_data[items_in_a_not_b(colnames(filtered_data), c(mat_count_cols, pat_count_cols))],  # everything
-#     data[is.na(data['female_mean_srpm_xi_over_xa_ratio'])==FALSE,
-#     	 c(index_cols, value_cols, metadata_cols)
-# 	],
-#     file = file.path(out_dir, srpms_filename),
-#     row.names = FALSE,
-#     sep = ','
-# )
 
 filtered_data = data[
 	(data['female_mean_rpkm_gt_1'] != 0 | data['male_mean_rpkm_gt_1'] != 0)
