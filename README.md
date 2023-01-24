@@ -1,6 +1,6 @@
 ## Introduction
 
-This code was provided to me by Sarah Pyfrom. It takes tsv files from `data/read_counts` as input and outputs a variety of csv files. Implementation is based on this paper by Joel Berletch et al.:
+This code was provided to me by Sarah Pyfrom. Original author was Zachary Beetham. It takes tsv files from `data/read_counts` as input and outputs a variety of csv files. Implementation is based on this paper by Joel Berletch et al.:
 
 ```
 Berletch JB, Ma W, Yang F, Shendure J, Noble WS, Disteche CM, et al. (2015) Escape from X Inactivation Varies in Mouse Tissues. PLoS Genet 11(3): e1005079. doi:10.1371/journal.pgen.1005079
