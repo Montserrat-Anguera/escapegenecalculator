@@ -10,14 +10,15 @@
 
 library(logr)
 library(GenomicFeatures)
+wd = dirname(this.path::here())
 
 
 # Input parameters
 # Note: in the future, make this loop through the directory or be able to pass a list
-in_dir = file.path(getwd( ), "data/ref/gtf")
+in_dir = file.path(wd, "data/ref/gtf")
 in_filename = 'Mus_musculus_casteij.CAST_EiJ_v1.103.chr_sorted.gtf.gz'
 # in_filename = 'Mus_musculus.GRCm38.102.chr_sorted_noYMT.gtf.gz'
-out_dir = file.path(getwd( ), "data/ref")
+out_dir = file.path(wd, "data/ref")
 species = strsplit(in_filename, split = ".", fixed=TRUE)[[1]][1]
 out_filename = paste("exon_lengths-", species, ".csv", sep='')
 

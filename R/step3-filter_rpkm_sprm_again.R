@@ -1,14 +1,15 @@
 ## Should combine this with step1
 
 library(logr)
-source(file.path(getwd( ), "R", "utils.R"))
+wd = dirname(this.path::here())
+source(file.path(wd, "R", "utils.R"))
 
 
 # Input parameters
-in_dir = file.path(getwd( ), "data")
+in_dir = file.path(wd, "data")
 filtered_srpm_data_filename = 'filtered_srpm_data.csv'
 ci_data_filename = 'confidence_intervals.csv'
-out_dir = file.path(getwd( ), "data")
+out_dir = file.path(wd, "data")
 out_filename = 'filtered_srpm_data_2.csv'  # will get rid of this entirely later
 
 

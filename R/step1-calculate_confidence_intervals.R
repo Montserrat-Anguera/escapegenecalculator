@@ -1,7 +1,7 @@
 ## Takes the output of step2
 
 library(logr)
-wd = '/home/harrisonized/github/R/escapegenecalculator'
+wd = dirname(this.path::here())
 source(file.path(wd, "R", "utils.R"))
 
 # Input parameters

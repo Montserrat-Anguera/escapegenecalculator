@@ -3,12 +3,13 @@
 
 library(logr)
 library(seqinr)
+wd = dirname(this.path::here())
 
 
 # Input parameters
-in_dir = file.path(getwd( ), "data/ref/fasta")
+in_dir = file.path(wd, "data/ref/fasta")
 in_filename = 'Mus_musculus_casteij.CAST_EiJ_v1.dna_rm.toplevel.fa'
-out_dir = file.path(getwd( ), "data/ref")
+out_dir = file.path(wd, "data/ref")
 species = strsplit(in_filename, split = ".", fixed=TRUE)[[1]][1]
 out_filename = paste("chr_lengths-", species, ".csv", sep='')
 

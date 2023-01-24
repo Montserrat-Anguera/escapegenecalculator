@@ -5,14 +5,15 @@
 
 library(logr)
 # library("dplyr")
-source(file.path(getwd( ), "R", "utils.R"))
+wd = dirname(this.path::here())
+source(file.path(wd, "R", "utils.R"))
 
 
 # Input parameters
-in_dir = file.path(getwd( ), "data", "read_counts")
+in_dir = file.path(wd, "data", "read_counts")
 pat_dir = file.path(in_dir, "pat_reads")  # silenced
 mat_dir = file.path(in_dir, "mat_reads")
-out_dir = file.path(getwd( ), "data", "read_counts")
+out_dir = file.path(wd, "data", "read_counts")
 
 index_cols = c('gene_id', 'gene_name', 'chromosome')
 value_cols = 'count'

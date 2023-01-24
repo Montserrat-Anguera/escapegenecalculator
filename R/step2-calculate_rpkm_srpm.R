@@ -1,18 +1,19 @@
 ## Depends on output of calculate_exon_lengths
 
 library(logr)
-source(file.path(getwd( ), "R", "utils.R"))
+wd = dirname(this.path::here())
+source(file.path(wd, "R", "utils.R"))
 
 
 # Input parameters
-ref_dir = file.path(getwd( ), "data", "ref")
+ref_dir = file.path(wd, "data", "ref")
 mat_exon_lengths_filepath = file.path(ref_dir, "exon_lengths-Mus_musculus.csv")
 pat_exon_lengths_filepath = file.path(ref_dir, "exon_lengths-Mus_musculus_casteij.csv")
 index_cols = c('gene_name', 'gene_id', 'chromosome')
 
-in_dir = file.path(getwd( ), "data", "read_counts")
+in_dir = file.path(wd, "data", "read_counts")
 input_filename = "normalized_reads_rpm_x_only.csv"
-out_dir = file.path(getwd( ), "data")
+out_dir = file.path(wd, "data")
 rpkm_data_filename = 'rpkm_data.csv'
 # srpms_filename = 'srpms_x_only.csv'  # troubleshooting
 filtered_srpm_data_filename = 'filtered_srpm_data.csv'
