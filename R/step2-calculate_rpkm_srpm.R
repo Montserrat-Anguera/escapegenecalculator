@@ -11,12 +11,14 @@ mat_exon_lengths_filepath = file.path(ref_dir, "exon_lengths-Mus_musculus.csv")
 pat_exon_lengths_filepath = file.path(ref_dir, "exon_lengths-Mus_musculus_casteij.csv")
 index_cols = c('gene_name', 'gene_id', 'chromosome')
 
-in_dir = file.path(wd, "data", "read_counts")
+
+in_dir = file.path(wd, "data")
 input_filename = "normalized_reads_rpm_x_only.csv"
 out_dir = file.path(wd, "data")
 rpkm_data_filename = 'rpkm_data.csv'
-# srpms_filename = 'srpms_x_only.csv'  # troubleshooting
 filtered_srpm_data_filename = 'filtered_srpm_data.csv'
+ci_data_filename = 'confidence_intervals.csv'
+out_filename = 'filtered_srpm_data_2.csv'
 
 
 # Start Log
@@ -33,7 +35,8 @@ log_print(paste('output file 2: ', file.path(out_dir, filtered_srpm_data_filenam
 log_print("reading data...")
 mat_exon_lengths <- read.csv(mat_exon_lengths_filepath, na.string="NA", stringsAsFactors=FALSE,)
 pat_exon_lengths <- read.csv(pat_exon_lengths_filepath, na.string="NA", stringsAsFactors=FALSE,)
-data <-read.csv(file.path(in_dir, input_filename), na.string="NA", stringsAsFactors=FALSE,)
+data <-read.csv(file.path(in_dir, "read_counts", input_filename), na.string="NA", stringsAsFactors=FALSE,)
+ci_data <- read.table(file.path(in_dir, ci_data_filename), header=TRUE, sep=",")  # used for filtering
 
 
 # ----------------------------------------------------------------------
@@ -167,6 +170,26 @@ write.table(
     # filtered_data[items_in_a_not_b(colnames(filtered_data), c(mat_count_cols, pat_count_cols))],  # everything
     filtered_data[c(index_cols, value_cols, metadata_cols)],
     file = file.path(out_dir, filtered_srpm_data_filename),
+    row.names = FALSE,
+    sep = ','
+)
+
+
+# ----------------------------------------------------------------------
+# Filter again
+
+
+shared_genes = intersect(filtered_data[, 'gene_name'], ci_data[, 'gene_name'])
+filtered_data <- filter_dataframe_column_by_list(filtered_data, 'gene_name', shared_genes)
+
+
+# ----------------------------------------------------------------------
+# Save
+
+log_print("writing data...")
+write.table(
+    filtered_data,
+    file=file.path(in_dir, out_filename),
     row.names = FALSE,
     sep = ','
 )

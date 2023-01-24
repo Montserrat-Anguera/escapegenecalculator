@@ -1,0 +1,6 @@
+mouse_name,mouse_gender,mouse_id_mat,mouse_id_pat,all_reads_mat,all_reads_pat,filtered_reads_mat,filtered_reads_pat,bias_xi_div_xa
+mouse_1,female,mouse_1-female-mat-bl6,mouse_1-female-pat-cast,4773667,3172251,3512813,2908143,0.664531271242841
+mouse_2,female,mouse_2-female-mat-bl6,mouse_2-female-pat-cast,5222637,3577058,3871745,3286815,0.68491415352053
+mouse_4,female,mouse_4-female-mat-bl6,mouse_4-female-pat-cast,3279278,3291421,2497650,3040758,1.00370294924675
+mouse_7,male,mouse_7-male-mat-bl6,mouse_7-male-pat-cast,5286952,3495893,3783115,3165819,0.661230327039095
+mouse_8,male,mouse_8-male-mat-bl6,mouse_8-male-pat-cast,5630569,3741399,4080200,3386516,0.664479735529393

@@ -118,12 +118,12 @@ summary['chromosomal_parentage'] = gsub('-', '', stringr::str_extract(summary[,'
 
 
 # should figure out how to suppress this warning
-summary_long <- pivot(
+summary_wide <- pivot(
     summary[c('mouse_id', 'mouse_name', 'mouse_gender', 'chromosomal_parentage', 'all_reads', 'filtered_reads')],
     columns=c('chromosomal_parentage'),
     values=c('mouse_id', 'all_reads', 'filtered_reads')
 )
-summary_long['bias_xi_div_xa'] = summary_long['all_reads_pat']/summary_long['all_reads_mat']
+summary_wide['bias_xi_div_xa'] = summary_wide['all_reads_pat']/summary_long['all_reads_mat']
 
 
 
@@ -131,7 +131,7 @@ summary_long['bias_xi_div_xa'] = summary_long['all_reads_pat']/summary_long['all
 log_print("writing summary...")
 write.table(summary, file.path(out_dir, 'summary.csv'),
             quote=FALSE, col.names=TRUE, row.names=FALSE, sep=',')
-write.table(summary, file.path(out_dir, 'summary_long.csv'),
+write.table(summary_wide, file.path(out_dir, 'summary_wide.csv'),
             quote=FALSE, col.names=TRUE, row.names=FALSE, sep=',')
 
 log_print(paste('End', Sys.time()))
