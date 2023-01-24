@@ -58,6 +58,24 @@ reset_index <- function(df, index_name='index') {
 }
 
 
+#' Because I can never remember how to do this
+#' 
+#' @export
+filter_dataframe_column_by_list <- function(dataframe, colname, items, index_name='index', return_index=FALSE) {
+    
+    data <- reset_index(dataframe, index_name=index_name)
+    rownames(data) <- data[, colname]
+    data <- (data[intersect(data[, colname], items),])  # filter genes shared by both gtf files
+    rownames(data) <- data[, index_name]  # optional preserve index for troubleshooting
+    
+    if (return_index==TRUE) {
+        return (data)
+    } else {
+        return (data[, items_in_a_not_b(colnames(data), 'index')])
+    }
+}
+
+
 #' This took an unbelievably long time to figure out
 #' tidyr returns a tibble object instead of a dataframe
 #' This function returns a dataframe
@@ -66,8 +84,8 @@ reset_index <- function(df, index_name='index') {
 pivot <- function(df, columns, values) {
     tibble_obj = tidyr::pivot_wider(
         df,
-        names_from=columns,
-        values_from=values,
+        names_from = columns,
+        values_from = values,
         values_fn = list
     )
     # Warning: Using an external vector in selections was deprecated in tidyselect 1.1.0.
