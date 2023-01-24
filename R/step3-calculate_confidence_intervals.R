@@ -81,23 +81,20 @@ x_reads_by_mouse = merge(x_reads_by_mouse, read_summary[, c('mouse_name', 'bias_
 # Implement formula from paper
 x_reads_by_mouse['total_reads'] = x_reads_by_mouse['count_mat'] + x_reads_by_mouse['count_pat']
 x_reads_by_mouse['pct_xi'] = x_reads_by_mouse['count_pat'] / x_reads_by_mouse['total_reads']
-x_reads_by_mouse[, 'pct_xi'][is.na(x_reads_by_mouse[, 'pct_xi'])] <- 0
+x_reads_by_mouse[, 'pct_xi'][is.na(x_reads_by_mouse[, 'pct_xi'])] <- 0  # fillna with 0
 
-x_reads_by_mouse['pct_xi_formula'] <- (
-    (x_reads_by_mouse['pct_xi'])/(x_reads_by_mouse['pct_xi']+x_reads_by_mouse['bias_xi_div_xa']*(1-x_reads_by_mouse['pct_xi']))
-)
+pct_xi = x_reads_by_mouse['pct_xi']
+bias_xi_div_xa = x_reads_by_mouse['bias_xi_div_xa']
 
-x_reads_by_mouse['lower_bound'] <- (
-    x_reads_by_mouse['pct_xi_formula']
-    - (zscore)*(sqrt((x_reads_by_mouse['pct_xi_formula'])*(1-x_reads_by_mouse['pct_xi_formula'])/x_reads_by_mouse['total_reads']))
-)
+x_reads_by_mouse['pct_xi_formula'] <- pct_xi/(pct_xi+bias_xi_div_xa*(1-pct_xi))
+
+
+total_reads = x_reads_by_mouse['total_reads']
+pct_xi_formula = x_reads_by_mouse['pct_xi_formula']  # need to figure out what this is
+x_reads_by_mouse['lower_bound'] <- pct_xi_formula - (zscore)*(sqrt(pct_xi_formula*(1-pct_xi_formula)/total_reads))
 x_reads_by_mouse[, 'lower_bound'][is.na(x_reads_by_mouse[, 'lower_bound'])] <- 0  # fillna with 0
 
-x_reads_by_mouse['upper_bound'] <- (
-    x_reads_by_mouse['pct_xi_formula']
-    + (zscore)*(sqrt((x_reads_by_mouse['pct_xi_formula'])*(1-x_reads_by_mouse['pct_xi_formula'])/x_reads_by_mouse['total_reads']))
-)
-
+x_reads_by_mouse['upper_bound'] <- pct_xi_formula + (zscore)*(sqrt(pct_xi_formula *(1-pct_xi_formula )/total_reads))
 x_reads_by_mouse[, 'upper_bound'][is.na(x_reads_by_mouse[, 'upper_bound'])] <- 0  # fillna with 0
 
 
