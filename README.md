@@ -3,7 +3,9 @@
 This code was provided to me by Sarah Pyfrom. Original author was Zachary Beetham. It takes tsv files from `data/read_counts` as input and outputs a variety of csv files. Implementation is based on this paper by Joel Berletch et al.:
 
 ```
-Berletch JB, Ma W, Yang F, Shendure J, Noble WS, Disteche CM, et al. (2015) Escape from X Inactivation Varies in Mouse Tissues. PLoS Genet 11(3): e1005079. doi:10.1371/journal.pgen.1005079
+Berletch JB, Ma W, Yang F, Shendure J, Noble WS, Disteche CM, et al. (2015)
+Escape from X Inactivation Varies in Mouse Tissues. PLoS Genet 11(3): e1005079.
+doi:10.1371/journal.pgen.1005079
 ```
 
 
@@ -17,15 +19,16 @@ install.packages("devtools")
 install.packages("seqinr")
 install.packages("logr")
 install.packages("data.table")
-install.packages("dplyr")
 install.packages("this.path")  # See: https://github.com/ArcadeAntics/this.path
+# install.packages("dplyr")  # eliminated this as a dependency
 
 install.packages("BiocManager")
 BiocManager::install("rtracklayer")  # this takes ~15 minutes
 BiocManager::install("GenomicFeatures")
 
-devtools::create("~/github/R/escapegenecalculator")
-devtools::document("~/github/R/escapegenecalculator")
+# documentation only:
+devtools::create("~/path/to/escapegenecalculator")
+devtools::document("~/path/to/escapegenecalculator")
 
 # Warning! Do not install this as a library, it will run through all scripts
 # install.packages("~/github/R/escapegenecalculator", repos=NULL, type='source')  
@@ -54,7 +57,6 @@ Rscript R/extract_chromosome_lengths.R  # ~5 minutes, optional
 Rscript R/merge_read_counts.R
 Rscript R/step1-calculate_confidence_intervals.R
 Rscript R/step2-calculate_rpkm_srpm.R
-Rscript R/step3-filter_rpkm_sprm_again  # will be deleting this
 ```
 
 

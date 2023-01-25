@@ -1,4 +1,4 @@
-"gene_name","gene_id_mat","chromosome_mat","gene_id_pat","chromosome_pat","count_mouse_1_female_mat_bl6","count_mouse_2_female_mat_bl6","count_mouse_4_female_mat_bl6","count_mouse_7_male_mat_bl6","count_mouse_8_male_mat_bl6","count_mouse_1_female_pat_cast","count_mouse_2_female_pat_cast","count_mouse_4_female_pat_cast","count_mouse_7_male_pat_cast","count_mouse_8_male_pat_cast"
+"gene_name","gene_id_mat","chromosome_mat","gene_id_pat","chromosome_pat","rpm_mouse_1_female_mat_bl6","rpm_mouse_2_female_mat_bl6","rpm_mouse_4_female_mat_bl6","rpm_mouse_7_male_mat_bl6","rpm_mouse_8_male_mat_bl6","rpm_mouse_1_female_pat_cast","rpm_mouse_2_female_pat_cast","rpm_mouse_4_female_pat_cast","rpm_mouse_7_male_pat_cast","rpm_mouse_8_male_pat_cast"
 "0610006L08Rik","ENSMUSG00000108652","7","MGP_CASTEiJ_G0007037","7",0,0,0,0,0,0,0,0,0,0
 "0610009B22Rik","ENSMUSG00000007777","11","MGP_CASTEiJ_G0017589","11",3.98540998339507,3.87422208848982,3.60338718395292,4.49365139574134,5.14680652909171,3.43862045298323,3.34670494080135,6.57730736875476,5.36985847895916,6.20106327564966
 "0610009E02Rik","ENSMUSG00000086714","2","MGP_CASTEiJ_G0014716","2",0,0,0,0,0,0,0,0,0,0

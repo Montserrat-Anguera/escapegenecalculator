@@ -1,0 +1,11 @@
+metadata,all_reads,filtered_reads,mouse_id,mouse_gender,chromosomal_parentage
+mouse_1_female_mat_bl6,4773667,3512813,mouse_1,female,mat
+mouse_2_female_mat_bl6,5222637,3871745,mouse_2,female,mat
+mouse_4_female_mat_bl6,3279278,2497650,mouse_4,female,mat
+mouse_7_male_mat_bl6,5286952,3783115,mouse_7,male,mat
+mouse_8_male_mat_bl6,5630569,4080200,mouse_8,male,mat
+mouse_1_female_pat_cast,3172251,2908143,mouse_1,female,pat
+mouse_2_female_pat_cast,3577058,3286815,mouse_2,female,pat
+mouse_4_female_pat_cast,3291421,3040758,mouse_4,female,pat
+mouse_7_male_pat_cast,3495893,3165819,mouse_7,male,pat
+mouse_8_male_pat_cast,3741399,3386516,mouse_8,male,pat

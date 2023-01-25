@@ -1,138 +1,147 @@
 ## This is a preprocessing step for downstream
-## Merges raw files from the read_counts dir
-## Generates a summary file
+## 1. Merges raw files from the read_counts dir
+## 2. Generates a summary_long file
 
 
 library(logr)
-# library("dplyr")
 wd = dirname(this.path::here())
 source(file.path(wd, "R", "utils.R"))
+save=TRUE  # useful for troubleshooting
 
 
 # Input parameters
 in_dir = file.path(wd, "data", "read_counts")
-pat_dir = file.path(in_dir, "pat_reads")  # silenced
-mat_dir = file.path(in_dir, "mat_reads")
 out_dir = file.path(wd, "data", "read_counts")
-
-index_cols = c('gene_id', 'gene_name', 'chromosome')
-value_cols = 'count'
+mat_dir = file.path(in_dir, "mat_reads")  # has more genes
+pat_dir = file.path(in_dir, "pat_reads")
 
 
 # Start Log
 log <- log_open(paste("merge_read_counts ", Sys.time(), '.log', sep=''))
-log_print(paste('input dir: ', file.path(in_dir)))
-log_print(paste('output file 1: ', file.path(out_dir, "reads_count.csv")))
-log_print(paste('output file 2: ', file.path(out_dir, "reads_count_x_only.csv")))
-log_print(paste('output file 3: ', file.path(out_dir, "normalized_reads_rpm.csv")))
-log_print(paste('output file 4: ', file.path(out_dir, "normalized_reads_rpm_x_only.csv")))
-log_print(paste('output file 5: ', file.path(out_dir, "summary.csv")))
-log_print(paste('output file 6: ', file.path(out_dir, "summary_long.csv")))
+if (save) {
+    log_print(paste('input dir: ', file.path(in_dir)))
+    log_print(paste('output file 1: ', file.path(out_dir, "reads.csv")))
+    log_print(paste('output file 2: ', file.path(out_dir, "reads_x_only.csv")))
+    log_print(paste('output file 3: ', file.path(out_dir, "rpm.csv")))
+    log_print(paste('output file 4: ', file.path(out_dir, "rpm_x_only.csv")))
+    log_print(paste('output file 5: ', file.path(out_dir, "summary_long.csv")))
+    log_print(paste('output file 6: ', file.path(out_dir, "summary_wide.csv")))
+} else {
+    log_print(paste('save: ', save))
+}
+
+#' Convenience function for reading in data
+#'
+index_cols_ = c('gene_id', 'gene_name', 'chromosome')
+value_cols_ = 'count'
+join_many_reads <- function(dir_path, index_cols=index_cols_, value_cols=value_cols_, ext='tsv', sep='\t') {
+    reads = join_many_csv(dir_path, index_cols=index_cols, value_cols=value_cols, ext='tsv', sep='\t')
+    colnames(reads) <- sapply(
+      colnames(reads),
+      function(x) {
+        step1 <- gsub("-", "_", x)  # convert mixed_case-col_names to fully snake_case
+        step2 <- gsub("count", "num_reads", step1)  # "num_reads" is more descriptive than "count"
+        return (step2)}
+    )
+    return (reads)
+}
 
 
 # ----------------------------------------------------------------------
 # Read data
 
-log_print("reading data...")
-pat_data = join_many_csv(pat_dir, index_cols=index_cols, value_cols=value_cols, ext='tsv', sep='\t')
-mat_data = join_many_csv(mat_dir, index_cols=index_cols, value_cols=value_cols, ext='tsv', sep='\t')
+log_print("merging data...")
 
-
-# ----------------------------------------------------------------------
-# Merge Read Counts
-
-log_print("processing...")
+mat_reads <- join_many_reads(mat_dir)
+pat_reads <- join_many_reads(pat_dir)
 
 # inner join
 all_reads = merge(
-    mat_data[(mat_data$gene_name!=""), ],
-    pat_data[(pat_data$gene_name!=""), ],
+    mat_reads[(mat_reads['gene_name']!=""), ],
+    pat_reads[(pat_reads['gene_name']!=""), ],
     by="gene_name", suffixes=c("_mat", "_pat"),
     all.x=FALSE, all.y=FALSE,  # do not include null values
     na_matches = "never"
 )
-colnames(all_reads) <- sapply(
-	colnames(all_reads),
-	function(x) gsub("-", "_", as.character(x))
-)  # convert mixed_case-col_names to fully snake_case
 
-# reorder columns
+# reindex columns
 index_cols = c("gene_name", "gene_id_mat", "chromosome_mat", "gene_id_pat", "chromosome_pat")
-count_cols = items_in_a_not_b(
-	colnames(all_reads),
-	c("gene_name", "gene_id_mat", "chromosome_mat", "gene_id_pat", "chromosome_pat")
-)
-all_reads <- all_reads[, c(index_cols, count_cols)]
+num_reads_cols = items_in_a_not_b(colnames(all_reads), index_cols)
+all_reads <- all_reads[, c(index_cols, num_reads_cols)]
 
 
 # filter duplicates on maternal
 # note: there are still duplicates on paternal, but that might be ok
 all_reads <- all_reads[!duplicated(all_reads[, c("gene_id_mat", "chromosome_mat")]),]
-all_reads <- dplyr::distinct(all_reads)  # this doesn't actually do anything for this dataset
-all_reads <- all_reads[all_reads$chromosome_pat!='Y',]  # filter Y chromosome, there shouldn't be any anyway
+all_reads <- all_reads[all_reads['chromosome_pat']!='Y',]  # filter Y chromosome, there shouldn't be any anyway
+# all_reads <- dplyr::distinct(all_reads)  # this doesn't actually do anything for this dataset
 
 
-# normalize count_cols by colSums
+# normalize num_reads by colSums to get rpm
 # See: https://stackoverflow.com/questions/9447801/dividing-columns-by-colsums-in-r
-
 norm_reads <- data.frame(
-    all_reads[c("gene_name", "gene_id_mat", "chromosome_mat", "gene_id_pat", "chromosome_pat")],  # index cols
-    sweep(all_reads[count_cols], 2, colSums(all_reads[count_cols]), `/`)*1e6,  # rpm
+    all_reads[index_cols],
+    sweep(all_reads[num_reads_cols], 2, colSums(all_reads[num_reads_cols]), `/`)*1e6,
     check.names=FALSE
 )
+colnames(norm_reads) <- sapply(colnames(norm_reads), function(x) gsub("num_reads", "rpm", x))
 
 
-log_print("writing data...")
-
-write.table(all_reads, file.path(out_dir, "reads_count.csv"),
-            row.names=FALSE, col.names=TRUE, sep=",")
-write.table(all_reads[all_reads$chromosome_mat=='X', ], file.path(out_dir, "reads_count_x_only.csv"),
-	        row.names=FALSE, col.names=TRUE, sep=",")
-write.table(norm_reads, file.path(out_dir, "normalized_reads_rpm.csv"),
-            row.names=FALSE, col.names=TRUE, sep=",")
-write.table(norm_reads[norm_reads$chromosome_mat=='X', ], file.path(out_dir, "normalized_reads_rpm_x_only.csv"),
-            row.names=FALSE, col.names=TRUE, sep=",")
+# write data
+if (save) {
+	log_print("writing data...")
+    write.table(all_reads, file.path(out_dir, "reads.csv"),
+                row.names=FALSE, col.names=TRUE, sep=",")
+    write.table(all_reads[all_reads['chromosome_mat']=='X', ], file.path(out_dir, "reads_x_only.csv"),
+                row.names=FALSE, col.names=TRUE, sep=",")
+    write.table(norm_reads, file.path(out_dir, "rpm.csv"),
+                row.names=FALSE, col.names=TRUE, sep=",")
+    write.table(norm_reads[norm_reads['chromosome_mat']=='X', ], file.path(out_dir, "rpm_x_only.csv"),
+                row.names=FALSE, col.names=TRUE, sep=",")
+}
 
 
 # ----------------------------------------------------------------------
-# Generate read summary data for calculating mapping biases in the future.
+# Generate Summary Data
 
 log_print("generating summary...")
 
-mat_cols = items_in_a_not_b(colnames(mat_data), c("gene_id", "gene_name", "chromosome"))
-pat_cols = items_in_a_not_b(colnames(pat_data), c("gene_id", "gene_name", "chromosome"))
 
-summary = data.frame(
-    'all_reads' = c(colSums(mat_data[mat_cols]), colSums(pat_data[pat_cols])),
-    'filtered_reads' = colSums(all_reads[, count_cols])
+# concatenate data into summary
+mat_cols = items_in_a_not_b(colnames(mat_reads), c("gene_id", "gene_name", "chromosome"))
+pat_cols = items_in_a_not_b(colnames(pat_reads), c("gene_id", "gene_name", "chromosome"))
+summary_long = data.frame(
+    'all_reads' = c(colSums(mat_reads[mat_cols]), colSums(pat_reads[pat_cols])),
+    'filtered_reads' = colSums(all_reads[, num_reads_cols])
 )
+rownames(summary_long) <- sapply(rownames(summary_long), function(x) gsub("num_reads_", "", x))
+summary_long = reset_index(summary_long, 'metadata')
 
-summary = reset_index(summary, 'mouse_id')
-# replace the count prefix in the mouse_id col
-summary[, 'mouse_id'] <- sapply(summary[, 'mouse_id'], function(x) gsub("count-", "", as.character(x)))
+# get metadata
+summary_long['mouse_id'] <- sapply(summary_long[, 'metadata'], function(x) strsplit(x, split='_male_|_female_')[[1]][1])
+# summary_long['mouse_id'] = stringr::str_extract(summary_long[,'mouse_id'], 'mouse_[0-9]+')  # alternative
+summary_long['mouse_gender'] = gsub('_', '', stringr::str_extract(summary_long[,'metadata'], '_female_|_male_'))
+summary_long['chromosomal_parentage'] = gsub('_', '', stringr::str_extract(summary_long[,'metadata'], '_mat_|_pat_'))
 
 
-summary['mouse_name'] = stringr::str_extract(summary[,'mouse_id'], 'mouse_[0-9]+')
-summary['mouse_gender'] = gsub('-', '', stringr::str_extract(summary[,'mouse_id'], '-female-|-male-'))
-summary['chromosomal_parentage'] = gsub('-', '', stringr::str_extract(summary[,'mouse_id'], '-mat-|-pat-'))
-
-
-# should figure out how to suppress this warning
+# pivot to wide format
 summary_wide <- pivot(
-    summary[c('mouse_id', 'mouse_name', 'mouse_gender', 'chromosomal_parentage', 'all_reads', 'filtered_reads')],
+    summary_long[c('metadata', 'mouse_id', 'mouse_gender', 'chromosomal_parentage', 'all_reads', 'filtered_reads')],
     columns=c('chromosomal_parentage'),
-    values=c('mouse_id', 'all_reads', 'filtered_reads')
+    values=c('metadata', 'all_reads', 'filtered_reads')
 )
-summary_wide['bias_xi_div_xa'] = summary_wide['all_reads_pat']/summary_long['all_reads_mat']
+summary_wide['bias_xi_div_xa'] = summary_wide['all_reads_pat']/summary_wide['all_reads_mat']
 
 
+# write data
+if (save) {
+	log_print("writing summary...")
+    write.table(summary_long, file.path(out_dir, 'summary_long.csv'),
+                quote=FALSE, col.names=TRUE, row.names=FALSE, sep=',')
+    write.table(summary_wide, file.path(out_dir, 'summary_wide.csv'),
+                quote=FALSE, col.names=TRUE, row.names=FALSE, sep=',')
+}
 
-# Save
-log_print("writing summary...")
-write.table(summary, file.path(out_dir, 'summary.csv'),
-            quote=FALSE, col.names=TRUE, row.names=FALSE, sep=',')
-write.table(summary_wide, file.path(out_dir, 'summary_wide.csv'),
-            quote=FALSE, col.names=TRUE, row.names=FALSE, sep=',')
 
 log_print(paste('End', Sys.time()))
 log_close()
