@@ -87,7 +87,8 @@ pivot <- function(df, columns, values) {
             df,
             names_from = columns,
             values_from = values,
-            values_fn = list
+            values_fn = list,
+            names_glue = if (length(values)==1){"{.value}_{.name}"}
         )
     }, warning = function(w) {
         if ( any(grepl("Using an external vector", w)) ) {
