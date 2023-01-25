@@ -145,6 +145,7 @@ join_many_csv <- function(dir_path, index_cols, value_cols, ext='csv', recursive
 
 
 #' Read all the csv files from a directory and append them into a single dataframe
+#' This is missing the filename column for now
 #' 
 #' @export
 append_many_csv <- function(dir_path, sep='\t', row_names=1) {
