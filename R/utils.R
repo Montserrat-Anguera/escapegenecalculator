@@ -79,15 +79,25 @@ filter_dataframe_column_by_list <- function(dataframe, colname, items, index_nam
 #' 
 #' @export
 pivot <- function(df, columns, values) {
-    tibble_obj = tidyr::pivot_wider(
-        df,
-        names_from = columns,
-        values_from = values,
-        values_fn = list
-    )
+
     # Warning: Using an external vector in selections was deprecated in tidyselect 1.1.0.
-    # Just ignore this. It doesn't matter.
-    return (data.frame(lapply(tibble_obj, unlist)))
+    # See: http://romainfrancois.blog.free.fr/index.php?post/2009/05/20/Disable-specific-warnings
+    withCallingHandlers({
+        tibble_obj = tidyr::pivot_wider(
+            df,
+            names_from = columns,
+            values_from = values,
+            values_fn = list
+        )
+    }, warning = function(w) {
+        if ( any(grepl("Using an external vector", w)) ) {
+            invokeRestart("muffleWarning")
+        }
+    })
+    
+    dataframe = data.frame(lapply(tibble_obj, unlist))
+    
+    return (dataframe)
 }
 
 
@@ -111,10 +121,19 @@ join_many_csv <- function(dir_path, index_cols, value_cols, ext='csv', recursive
     # read dfs and left join on index_cols
     df_list <- lapply(filepaths, read.csv, sep=sep)
 
-    all_reads <- Reduce(
-        function(...) merge(..., by=index_cols),
-        lapply(df_list, "[", c(index_cols, value_cols))
-    )
+    # Warning: column names ‘count.x’, ‘count.y’ are duplicated in the result
+    # See: https://stackoverflow.com/questions/38603668/suppress-any-emission-of-a-particular-warning-message
+    withCallingHandlers({
+        all_reads <- Reduce(
+            function(...) merge(..., by=index_cols),
+            lapply(df_list, "[", c(index_cols, value_cols))
+        )
+    }, warning = function(w) {
+        # print(conditionMessage(w))
+        if (startsWith(conditionMessage(w), "column names")) {
+            invokeRestart( "muffleWarning" )
+        }
+    })
     
     # rename columns
     colnames(all_reads) = c(
