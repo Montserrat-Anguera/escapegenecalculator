@@ -9,15 +9,16 @@ source(file.path(wd, "R", "utils.R"))
 ref_dir = file.path(wd, "data", "ref")
 mat_exon_lengths_filepath = file.path(ref_dir, "exon_lengths-Mus_musculus.csv")
 pat_exon_lengths_filepath = file.path(ref_dir, "exon_lengths-Mus_musculus_casteij.csv")
-index_cols = c('gene_name', 'gene_id', 'chromosome')
 
 
+# inputs
 in_dir = file.path(wd, "data")
-input_filename = "normalized_reads_rpm_x_only.csv"
+input_filename = "rpm_x_only.csv"
+ci_data_filename = 'confidence_intervals.csv'
+
 out_dir = file.path(wd, "data")
 rpkm_data_filename = 'rpkm_data.csv'
 filtered_srpm_data_filename = 'filtered_srpm_data.csv'
-ci_data_filename = 'confidence_intervals.csv'
 out_filename = 'filtered_srpm_data_2.csv'
 
 
@@ -25,7 +26,6 @@ out_filename = 'filtered_srpm_data_2.csv'
 log <- log_open(paste("step2-calculate_rpkm_srpm ", Sys.time(), '.log', sep=''))
 log_print(paste('input file: ', file.path(in_dir, input_filename)))
 log_print(paste('output file 1: ', file.path(out_dir, rpkm_data_filename)))
-# log_print(paste('output file 2: ', file.path(out_dir, srpms_filename)))  # troubleshooting
 log_print(paste('output file 2: ', file.path(out_dir, filtered_srpm_data_filename)))
 
 
@@ -43,7 +43,6 @@ ci_data <- read.table(file.path(in_dir, ci_data_filename), header=TRUE, sep=",")
 # Compute RPKM 
 
 log_print(paste('Computing RPKMs...', Sys.time()))
-
 
 # select only genes available both gtf files
 shared_genes = intersect(mat_exon_lengths[, 'gene_name'], pat_exon_lengths[, 'gene_name'])
@@ -75,11 +74,11 @@ data <- merge(
 
 
 # RPKM calculation
-mat_count_cols = filter_list_for_match(colnames(data), pattern=c('count', 'mat'))
-data[, gsub('count', 'rpkm', mat_count_cols)] <- data[mat_count_cols]/data[,"exon_length_mat"]*1000
+mat_count_cols = filter_list_for_match(colnames(data), pattern=c('rpm', 'mat'))
+data[, gsub('rpm', 'rpkm', mat_count_cols)] <- data[mat_count_cols]/data[,"exon_length_mat"]*1000
 
-pat_count_cols = filter_list_for_match(colnames(data), pattern=c('count', 'pat'))
-data[, gsub('count', 'rpkm', pat_count_cols)] <- data[pat_count_cols]/data[,"exon_length_pat"]*1000
+pat_count_cols = filter_list_for_match(colnames(data), pattern=c('rpm', 'pat'))
+data[, gsub('rpm', 'rpkm', pat_count_cols)] <- data[pat_count_cols]/data[,"exon_length_pat"]*1000
 
 
 # Write RPKM to file
@@ -118,11 +117,11 @@ data['male_mean_rpkm'] = data['male_xa_mean_rpkm'] + data['male_xi_mean_rpkm']
 
 
 # SRPM calculations
-
-female_mat_count_cols = filter_list_for_match(colnames(data), pattern=c('count', '_female_', 'mat'))  # Xa
-female_pat_count_cols = filter_list_for_match(colnames(data), pattern=c('count', '_female_', 'pat'))  # Xi
-male_mat_count_cols = filter_list_for_match(colnames(data), pattern=c('count', '_male_', 'mat'))  # Xa
-male_pat_count_cols = filter_list_for_match(colnames(data), pattern=c('count', '_male_', 'pat'))  # Xi
+# actually need count cols, not rpkm cols for this calculation
+female_mat_count_cols = filter_list_for_match(colnames(data), pattern=c('rpm', '_female_', 'mat'))  # Xa
+female_pat_count_cols = filter_list_for_match(colnames(data), pattern=c('rpm', '_female_', 'pat'))  # Xi
+male_mat_count_cols = filter_list_for_match(colnames(data), pattern=c('rpm', '_male_', 'mat'))  # Xa
+male_pat_count_cols = filter_list_for_match(colnames(data), pattern=c('rpm', '_male_', 'pat'))  # Xi
 
 data['female_xa_mean_srpm'] = rowMeans(data[female_mat_count_cols])*10
 data['female_xi_mean_srpm'] = rowMeans(data[female_pat_count_cols])*10
@@ -131,7 +130,6 @@ data['male_xi_mean_srpm'] = rowMeans(data[male_pat_count_cols])*10
 
 
 # Xi/Xa Ratio
-
 data['female_mean_srpm_xi_over_xa_ratio'] = data['female_xi_mean_srpm']/data['female_xa_mean_srpm']
 
 
@@ -149,7 +147,7 @@ data['female_xi_mean_srpm_gte_2'] <- as.integer(data['female_xi_mean_srpm'] >= 2
 index_cols = c('gene_name', 'gene_id_mat', 'gene_id_pat', 'chromosome_mat', 'chromosome_pat')
 value_cols = c(
 	'female_mean_rpkm', 'male_mean_rpkm',
-	'female_xi_mean_srpm', 'female_xa_mean_srpm', 'male_xi_mean_srpm',
+	'female_xi_mean_srpm', 'female_xa_mean_srpm', 'male_xa_mean_srpm', 'male_xi_mean_srpm',
 	'female_mean_srpm_xi_over_xa_ratio'
 )
 metadata_cols = c(
