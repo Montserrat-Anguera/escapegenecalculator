@@ -22,10 +22,8 @@ if (save) {
     log_print(paste('input dir: ', file.path(in_dir)))
     log_print(paste('output file 1: ', file.path(out_dir, 'reads.csv')))
     log_print(paste('output file 2: ', file.path(out_dir, 'reads_x_only.csv')))
-    log_print(paste('output file 3: ', file.path(out_dir, 'rpm.csv')))
-    log_print(paste('output file 4: ', file.path(out_dir, 'rpm_x_only.csv')))
-    log_print(paste('output file 5: ', file.path(out_dir, 'summary_long.csv')))
-    log_print(paste('output file 6: ', file.path(out_dir, 'summary_wide.csv')))
+    log_print(paste('output file 3: ', file.path(out_dir, 'summary_long.csv')))
+    log_print(paste('output file 4: ', file.path(out_dir, 'summary_wide.csv')))
 } else {
     log_print(paste('save: ', save))
 }
@@ -48,7 +46,7 @@ join_many_reads <- function(dir_path, index_cols=index_cols_, value_cols=value_c
 
 
 # ----------------------------------------------------------------------
-# Read data
+# Merge data
 
 log_print('merging data...')
 
@@ -77,26 +75,12 @@ all_reads <- all_reads[all_reads['chromosome_pat']!='Y',]  # filter Y chromosome
 # all_reads <- dplyr::distinct(all_reads)  # this doesn't actually do anything for this dataset
 
 
-# normalize num_reads by colSums to get rpm
-# See: https://stackoverflow.com/questions/9447801/dividing-columns-by-colsums-in-r
-norm_reads <- data.frame(
-    all_reads[index_cols],
-    sweep(all_reads[num_reads_cols], 2, colSums(all_reads[num_reads_cols]), `/`)*1e6,
-    check.names=FALSE
-)
-colnames(norm_reads) <- sapply(colnames(norm_reads), function(x) gsub('num_reads', 'rpm', x))
-
-
 # write data
 if (save) {
 	log_print('writing data...')
     write.table(all_reads, file.path(out_dir, 'reads.csv'),
                 row.names=FALSE, col.names=TRUE, sep=',')
     write.table(all_reads[all_reads['chromosome_mat']=='X', ], file.path(out_dir, 'reads_x_only.csv'),
-                row.names=FALSE, col.names=TRUE, sep=',')
-    write.table(norm_reads, file.path(out_dir, 'rpm.csv'),
-                row.names=FALSE, col.names=TRUE, sep=',')
-    write.table(norm_reads[norm_reads['chromosome_mat']=='X', ], file.path(out_dir, 'rpm_x_only.csv'),
                 row.names=FALSE, col.names=TRUE, sep=',')
 }
 

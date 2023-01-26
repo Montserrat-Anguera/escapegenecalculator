@@ -56,7 +56,7 @@ Rscript R/extract_chromosome_lengths.R  # ~5 minutes, optional
 # Go through the steps
 Rscript R/merge_read_counts.R
 Rscript R/step1-calculate_confidence_intervals.R
-Rscript R/step2-calculate_rpkm_srpm.R
+Rscript R/step2-normalize_read_counts.R
 ```
 
 
