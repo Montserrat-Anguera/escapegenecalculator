@@ -81,9 +81,6 @@ norm_x_reads <- norm_reads[norm_reads['chromosome_mat']=='X', ]
 # write data
 if (save) {
     log_print('Writing RPM data...')
-
-
-
     write.table(norm_reads, file.path(out_dir, rpm_filename),
                 row.names=FALSE, col.names=TRUE, sep=',')
     write.table(norm_x_reads, file.path(out_dir, rpm_x_only_filename),

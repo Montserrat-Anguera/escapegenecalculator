@@ -16,6 +16,7 @@ Run the following in your R console. My machine is on R 4.2.2.
 
 ```R
 install.packages("devtools")
+install.packages("reshape")
 install.packages("seqinr")
 install.packages("logr")
 install.packages("data.table")

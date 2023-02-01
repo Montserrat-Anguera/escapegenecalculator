@@ -83,16 +83,16 @@ x_reads = merge(x_reads, read_summary[, c('mouse_id', 'bias_xi_div_xa')], by=c('
 
 log_print('Computing confidence intervals...')
 
-x_reads['total_reads'] = x_reads['num_reads_mat'] + x_reads['num_reads_pat']
+x_reads['total_reads'] = x_reads['num_reads_mat'] + x_reads['num_reads_pat']  # mat=Xa=n_i1, pat=Xi=n_i0
 x_reads['pct_xi'] = x_reads['num_reads_pat'] / x_reads['total_reads']
 x_reads[is.na(x_reads[, 'pct_xi']), 'pct_xi'] <- 0  # fillna with 0
 
 # human readable
 bias_xi_div_xa <- x_reads['bias_xi_div_xa']
-total_reads <- x_reads['total_reads']
+total_reads <- x_reads['total_reads']  # n_i
 pct_xi <- x_reads['pct_xi']
 
-x_reads['corrected_pct_xi'] <- pct_xi/(pct_xi+bias_xi_div_xa*(1-pct_xi))
+x_reads['corrected_pct_xi'] <- pct_xi/(pct_xi+bias_xi_div_xa*(1-pct_xi))  # correction reduces to pct_xi if bias=1, eg. mouse_4
 corrected_pct_xi <- x_reads['corrected_pct_xi']
 
 x_reads['lower_confidence_interval'] <- corrected_pct_xi - zscore * (sqrt(corrected_pct_xi*(1-corrected_pct_xi)/total_reads))

@@ -95,7 +95,9 @@ pivot <- function(df, columns, values) {
             invokeRestart("muffleWarning")
         }
     })
-    
+
+    # Note: This duplicates the functionality of data.table::setDT(tibble_obj)
+    # Note 2: The reverse operation is tibble::as_tibble(tibble_obj)
     dataframe = data.frame(lapply(tibble_obj, unlist))
     
     return (dataframe)
