@@ -5,3 +5,7 @@ data/archive
 data/deprecated
 log
 notes
+.Rhistory
+.Rbuildignore
+escapegenecalculator.Rproj
+
