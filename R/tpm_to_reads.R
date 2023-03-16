@@ -1,4 +1,4 @@
-## Computes RPM, RPKM, SRPM and filters the RPKMs using the confidence_intervals
+## Merges gene_name into tpm outputs using the data in exon_lengths
 
 library(logr)
 wd = dirname(this.path::here())
@@ -40,20 +40,13 @@ if (save) {
 
 exon_lengths <- read.csv(exon_lengths_filepath, na.string="NA", stringsAsFactors=FALSE)
 
-files = list_files(
-    file.path(wd, 'data', 'tpm_output'),
-    ext='out'
-)
-
-
+files = list_files(input_dir, ext='out')
 for (file in files) {
 
-    # Read in file
     df = read.csv(file, na.string="NA", sep='\t', stringsAsFactors=FALSE,)
+    colnames(df) <- lapply(colnames(df), camel_to_snake_case)  # format column names
 
-    # format column names
-    colnames(df) <- lapply(colnames(df), camel_to_snake_case)
-
+    # merge in gene_names
     df <- merge(
         df,
         exon_lengths[, c('gene_id', 'gene_name')],
@@ -64,12 +57,11 @@ for (file in files) {
         na_matches = "never"
     )
 
-    # reorder columns
+    # select columns and order
     df <- df[c("gene_id", "gene_name", items_in_a_not_b(colnames(df), c("gene_id", "gene_name")))]
-
     subset = c("gene_id", "gene_name", "reads")
 
-    # Write to file
+    # write to file
     filename = tools::file_path_sans_ext(basename(file))
     if (save) {
         log_print(paste('Writing file: ', filename, '.csv', sep=''))
