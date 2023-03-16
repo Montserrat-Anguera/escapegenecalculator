@@ -32,18 +32,18 @@ if (save) {
 #'
 index_cols_ = c('gene_id', 'gene_name', 'chromosome')
 value_cols_ = 'count'
-join_many_reads <- function(dir_path, index_cols=index_cols_, value_cols=value_cols_, ext='tsv', sep='\t') {
+join_many_reads <- function(dir_path, index_cols=index_cols_, value_cols=value_cols_, ext='csv', sep=',') {
     
-    reads = join_many_csv(dir_path, index_cols=index_cols, value_cols=value_cols, ext='tsv', sep='\t')
+    reads = join_many_csv(dir_path, index_cols=index_cols, value_cols=value_cols, ext='csv', sep=',')
 
     colnames(reads) <- tolower(colnames(reads))
-    colnames(reads) <- sapply(
+    colnames(reads) <- lapply(
       colnames(reads),
       function(x) {
         step1 <- gsub('-', '_', x)  # convert mixed_case-col_names to fully snake_case
-        step2 <- gsub('^chr/$', 'chromosome', step1)
-        step3 <- gsub('^counts/$', 'num_reads', step2)
-        step4 <- gsub('^reads/$', 'num_reads', step3)
+        step2 <- gsub('^chr_', 'chromosome_', step1)
+        step3 <- gsub('^count_', 'num_reads_', step2)
+        step4 <- gsub('^reads_', 'num_reads_', step3)
         return (step4)}
     )
 
@@ -58,6 +58,7 @@ log_print('merging data...')
 
 mat_reads <- join_many_reads(mat_dir)
 pat_reads <- join_many_reads(pat_dir)
+
 
 # inner join
 all_reads = merge(
