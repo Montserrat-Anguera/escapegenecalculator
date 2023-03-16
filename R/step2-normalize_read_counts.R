@@ -14,6 +14,7 @@ ci_data_filename = 'confidence_intervals.csv'
 ref_dir = file.path(wd, "data", "ref")
 mat_exon_lengths_filepath = file.path(ref_dir, "exon_lengths-Mus_musculus.csv")
 pat_exon_lengths_filepath = file.path(ref_dir, "exon_lengths-Mus_musculus_casteij.csv")
+# pat_exon_lengths_filepath = file.path(ref_dir, "exon_lengths-Mus_musculus.csv")  # for Katherine
 
 out_dir = file.path(data_dir, "normalized_reads")
 rpm_filename = 'rpm.csv'
@@ -52,6 +53,7 @@ if (save) {
 log_print("Reading data...")
 
 all_reads <-read.csv(file.path(data_dir, "read_counts", all_reads_filename), na.string="NA", stringsAsFactors=FALSE,)
+all_reads <- na.omit(all_reads)
 
 # rpkm filter
 mat_exon_lengths <- read.csv(mat_exon_lengths_filepath, na.string="NA", stringsAsFactors=FALSE,)
@@ -95,7 +97,7 @@ rm(all_reads)  # save memory
 
 log_print('Computing RPKMs...')
 
- # select on genes only available both gtf files
+# select on genes only available both gtf files
 norm_x_reads <- reset_index(norm_x_reads)
 rownames(norm_x_reads) <- norm_x_reads[, 'gene_name']
 norm_x_reads <- (norm_x_reads[intersect(norm_x_reads[, 'gene_name'], shared_genes),])  # filter genes shared by both gtf files
@@ -180,13 +182,20 @@ norm_x_reads['female_mean_srpm_xi_over_xa_ratio'] = norm_x_reads['female_xi_mean
 # Filters
 
 norm_x_reads['female_mean_rpkm_gt_1'] <- as.integer(norm_x_reads['female_mean_rpkm'] > 1)
+norm_x_reads[is.na(norm_x_reads['female_mean_rpkm_gt_1']), 'female_mean_rpkm_gt_1'] <- 0
+
 norm_x_reads['male_mean_rpkm_gt_1'] <- as.integer(norm_x_reads['male_mean_rpkm'] > 1)
+norm_x_reads[is.na(norm_x_reads['male_mean_rpkm_gt_1']), 'male_mean_rpkm_gt_1'] <- 0
+
 norm_x_reads['female_xi_mean_srpm_gte_2'] <- as.integer(norm_x_reads['female_xi_mean_srpm'] >= 2)
+norm_x_reads[is.na(norm_x_reads['female_xi_mean_srpm_gte_2']), 'female_xi_mean_srpm_gte_2'] <- 0
+
 
 filtered_data = norm_x_reads[
 	(norm_x_reads['female_mean_rpkm_gt_1'] != 0 | norm_x_reads['male_mean_rpkm_gt_1'] != 0)
 	& norm_x_reads['female_xi_mean_srpm_gte_2'] == 1,
 ]
+
 
 # save data
 if (save) {
