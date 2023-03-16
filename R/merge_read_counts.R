@@ -41,9 +41,9 @@ join_many_reads <- function(dir_path, index_cols=index_cols_, value_cols=value_c
       colnames(reads),
       function(x) {
         step1 <- gsub('-', '_', x)  # convert mixed_case-col_names to fully snake_case
-        step2 <- gsub('chr', 'chromosome', step1)
-        step3 <- gsub('count', 'num_reads', step2)
-        step4 <- gsub('reads', 'num_reads', step3)
+        step2 <- gsub('^chr/$', 'chromosome', step1)
+        step3 <- gsub('^counts/$', 'num_reads', step2)
+        step4 <- gsub('^reads/$', 'num_reads', step3)
         return (step4)}
     )
 
