@@ -40,7 +40,7 @@ if (save) {
 
 exon_lengths <- read.csv(exon_lengths_filepath, na.string="NA", stringsAsFactors=FALSE)
 
-files = list_files(input_dir, ext='out')
+files = list_files(in_dir, ext='out')
 for (file in files) {
 
     df = read.csv(file, na.string="NA", sep='\t', stringsAsFactors=FALSE,)
