@@ -23,7 +23,7 @@ if (save) {
 
 # Start Log
 start_time = Sys.time()
-log <- log_open(paste("step2-normalize_read_counts ", start_time, '.log', sep=''))
+log <- log_open(paste("tpm_to_reads ", start_time, '.log', sep=''))
 log_print(paste('Start ', start_time))
 if (save) {
     log_print(paste('input dir: ', in_dir))

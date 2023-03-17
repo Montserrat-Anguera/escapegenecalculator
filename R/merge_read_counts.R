@@ -84,7 +84,7 @@ all_reads <- all_reads[all_reads['chromosome_pat']!='Y',]  # filter Y chromosome
 
 # write data
 if (save) {
-	log_print('writing data...')
+    log_print('writing data...')
     write.table(all_reads, file.path(out_dir, 'reads.csv'),
                 row.names=FALSE, col.names=TRUE, sep=',')
     write.table(all_reads[all_reads['chromosome_mat']=='X', ], file.path(out_dir, 'reads_x_only.csv'),
@@ -125,7 +125,7 @@ summary_wide['bias_xi_div_xa'] = summary_wide['all_reads_pat']/summary_wide['all
 
 # write data
 if (save) {
-	log_print('writing summary...')
+    log_print('writing summary...')
     write.table(summary_long, file.path(out_dir, 'summary_long.csv'),
                 quote=FALSE, col.names=TRUE, row.names=FALSE, sep=',')
     write.table(summary_wide, file.path(out_dir, 'summary_wide.csv'),
