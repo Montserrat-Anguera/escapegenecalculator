@@ -21,7 +21,8 @@ rpm_filename = 'rpm.csv'
 rpm_x_only_filename = 'rpm_x_only.csv'
 rpkm_filename = 'rpkm.csv'
 srpm_filename = 'srpm.csv'  # output in data_dir
-filtered_srpm_filename = 'srpm_within_confidence_intervals.csv'  # output in data_dir
+filtered_srpm_filename = 'srpm_filtered.csv'  # output in data_dir
+srpm_within_ci_filename = 'srpm_within_confidence_intervals.csv'  # output in data_dir
 
 
 # create out_dir
@@ -42,6 +43,7 @@ if (save) {
     log_print(paste('output file 3: ', file.path(out_dir, rpkm_filename)))
     log_print(paste('output file 4: ', file.path(out_dir, srpm_filename)))
     log_print(paste('output file 5: ', file.path(out_dir, filtered_srpm_filename)))
+    log_print(paste('output file 6: ', file.path(out_dir, srpm_within_ci_filename)))
 } else {
     log_print(paste('save: ', save))
 }
@@ -178,6 +180,9 @@ norm_x_reads['male_xi_mean_srpm'] = rowMeans(norm_x_reads[male_pat_count_cols])*
 norm_x_reads['female_mean_srpm_xi_over_xa_ratio'] = norm_x_reads['female_xi_mean_srpm']/norm_x_reads['female_xa_mean_srpm']
 
 
+
+
+
 # ----------------------------------------------------------------------
 # Filters
 
@@ -189,7 +194,6 @@ norm_x_reads[is.na(norm_x_reads['male_mean_rpkm_gt_1']), 'male_mean_rpkm_gt_1'] 
 
 norm_x_reads['female_xi_mean_srpm_gte_2'] <- as.integer(norm_x_reads['female_xi_mean_srpm'] >= 2)
 norm_x_reads[is.na(norm_x_reads['female_xi_mean_srpm_gte_2']), 'female_xi_mean_srpm_gte_2'] <- 0
-
 
 filtered_data = norm_x_reads[
 	(norm_x_reads['female_mean_rpkm_gt_1'] != 0 | norm_x_reads['male_mean_rpkm_gt_1'] != 0)
@@ -212,9 +216,15 @@ if (save) {
         'female_xi_mean_srpm_gte_2'
     )
     write.table(
+        norm_x_reads,
+        file = file.path(data_dir, srpm_filename),
+        row.names = FALSE,
+        sep = ','
+    )
+    write.table(
         # filtered_data[items_in_a_not_b(colnames(filtered_data), c(mat_count_cols, pat_count_cols))],  # everything
         filtered_data[c(index_cols, value_cols, metadata_cols)],
-        file = file.path(data_dir, srpm_filename),
+        file = file.path(data_dir, filtered_srpm_filename),
         row.names = FALSE,
         sep = ','
     )
@@ -233,7 +243,7 @@ if (save) {
     log_print("Writing filtered SRPM data...")
     write.table(
         filtered_data,
-        file=file.path(data_dir, filtered_srpm_filename),
+        file=file.path(data_dir, srpm_within_ci_filename),
         row.names = FALSE,
         sep = ','
     )
