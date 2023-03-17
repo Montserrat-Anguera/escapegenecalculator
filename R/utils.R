@@ -1,6 +1,30 @@
 ## Common use functions
 
 
+# Functions
+# # items_in_a_not_b
+# # list_files
+# # filter_list_for_match
+# # reset_index
+# # filter_dataframe_column_by_list
+# # pivot
+# # join_many_csv
+# # append_many_csv
+
+
+# ----------------------------------------------------------------------
+# Text tools
+
+title_to_snake_case <- function(text) {
+    return(gsub('-', '_', gsub(' ', '_', tolower(text))))
+}
+
+
+camel_to_snake_case <- function(text) {
+    return(tolower(gsub("([a-z])([A-Z])", "\\1_\\L\\2", text, perl = TRUE)))
+}
+
+
 # ----------------------------------------------------------------------
 # List tools
 
