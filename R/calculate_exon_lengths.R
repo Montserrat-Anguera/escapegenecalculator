@@ -42,8 +42,8 @@ gtf_data <- rtracklayer::import(
 gtf_df <- as.data.frame(gtf_data, stringsAsFactors = FALSE)
 gtf_df_x_only <- gtf_df[is.na(gtf_df$gene_name) == FALSE & gtf_df$seqnames == 'X',]
 # gtf_subset <- gtf_df_x_only[,c(1,2,3,4,7,10,23)]
-gtf_subset <- gtf_df_x_only[,c(1,2,3,4,7,10,15)]  # this is bad
-
+# gtf_subset <- gtf_df_x_only[,c(1,2,3,4,7,10,15)]  # this is bad
+gtf_subset <- gtf_df_x_only[, c("seqnames", "start", "end",  "width", "type", "gene_id", "gene_name")]
 
 
 # First, import the GTF-file that you have also used as input for htseq-count
@@ -68,11 +68,11 @@ exons.list.per.gene.cast <- exonsBy(txdb,by="gene")
 exonic.gene.sizes.cast <- as.data.frame(sum(width(reduce(exons.list.per.gene.cast))))
 
 # try to match exonic lengths to genes on the X using the gtf_subset df and exonic.gene.sizes df.
+# final_data <- gtf_subset[,c(6,7)]
+final_data <- gtf_subset[,c("gene_id", "gene_name")]  # Pulling out just gene_ids and gene_names from the gtf file
+final_data <- unique(final_data)  # final_dataping down this new df to only unique instances
 
-final_data <- gtf_subset[,c(6,7)]    # Pulling out just gene_ids and gene_names from the gtf file
-final_data <- unique(final_data)        # final_dataping down this new df to only unique instances
-
-index_in_exonic.gene.sizes.cast <- match(final_data[,1], rownames(exonic.gene.sizes.cast))  # find the indexes of the entries in exonic.gene.sizes that matches the genes in the final_data dataframe.
+index_in_exonic.gene.sizes.cast <- match(final_data[,c("gene_id")], rownames(exonic.gene.sizes.cast))  # find the indexes of the entries in exonic.gene.sizes that matches the genes in the final_data dataframe.
 
 final_data[,3] <- exonic.gene.sizes.cast[index_in_exonic.gene.sizes.cast,] # Append those indexes onto the final_data df and rename cols. 
 colnames(final_data) <- c('gene_id', 'gene_name', 'exon_length')
