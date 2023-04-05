@@ -8,4 +8,6 @@ notes
 .Rhistory
 .Rbuildignore
 escapegenecalculator.Rproj
-
+renv
+renv.lock
+.Rprofile
