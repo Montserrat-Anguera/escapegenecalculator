@@ -8,12 +8,11 @@ save=TRUE  # useful for troubleshooting
 
 
 # Input parameters
-in_dir = file.path(wd, 'data')
-raw_dir = file.path(in_dir, 'read_counts', 'raw_read_counts')
+data_dir = file.path(wd, 'data')
+raw_dir = file.path(data_dir, 'read_counts', 'raw_read_counts')
 out_dir = file.path(wd, 'data', 'output')
 run_metadata_filename = 'run_metadata.csv'
 output_filename = 'output.csv'
-
 
 
 # Provide a z-score to be used in the confidence interval.
@@ -25,33 +24,29 @@ start_time = Sys.time()
 log <- log_open(paste("escapegenecalculator ", start_time, '.log', sep=''))
 log_print(paste('Start ', start_time))
 if (save) {
-    log_print(paste('input dir: ', file.path(in_dir)))
-    log_print(paste('output file: ', file.path(out_dir)))
+    log_print(paste('input dir: ', file.path(data_dir)))
+    log_print(paste('output dir: ', file.path(out_dir)))
 } else {
     log_print(paste('save: ', save))
 }
-
 
 
 # ----------------------------------------------------------------------
 # Read Data
 
 
-run_metadata <- read.csv(file.path(in_dir, run_metadata_filename), header=TRUE, sep=',', check.names=FALSE)
-
+# Need the total_num_reads a priori
+run_metadata <- read.csv(file.path(data_dir, run_metadata_filename), header=TRUE, sep=',', check.names=FALSE)
 
 
 filepaths <- list_files(raw_dir, ext='csv', recursive=TRUE)
 filenames = basename(filepaths)
 mouse_ids = unique(unlist(lapply(filenames, function(x) strsplit(x, '-')[[1]][1])))
 
-# log_print(paste('Replicates found', mouse_ids, '...'))
-
-
 for (mouse_id in mouse_ids) {
 
-    mat_file = filepaths[grep('mat', filenames[grep(mouse_id, filenames)])]
-    pat_file = filepaths[grep('pat', filenames[grep(mouse_id, filenames)])]
+    mat_file = filepaths[grep(paste(mouse_id, '.*mat', sep=''), filenames)]
+    pat_file = filepaths[grep(paste(mouse_id, '.*pat', sep=''), filenames)]
 
     log_print(paste('Processing', basename(mat_file), basename(pat_file), '...'))
 
@@ -107,12 +102,14 @@ for (mouse_id in mouse_ids) {
     # Compute RPKM (reads per kilobase of exon per million reads mapped)
     all_reads['rpkm_mat'] = all_reads['rpm_mat'] / all_reads["exon_length_mat"] * 1000
     all_reads['rpkm_pat'] = all_reads['rpm_pat'] / all_reads["exon_length_pat"] * 1000
+    all_reads['mean_rpkm'] = rowMeans(all_reads[c('rpkm_mat', 'rpkm_pat')])
 
 
     # Compute SRPM (allele-specific SNP-containing exonic reads per 10 million uniquely mapped reads)
     # This requires a-priori knowledge of how many reads
     total_num_reads = run_metadata[run_metadata['mouse_id']==mouse_id, 'total_num_reads']
-    all_reads[c('num_reads_mat', 'num_reads_pat')] = all_reads[c('num_reads_mat', 'num_reads_pat')] / total_num_reads * 1e7
+    all_reads[c('sprm_mat', 'srpm_pat')] = all_reads[c('num_reads_mat', 'num_reads_pat')] / total_num_reads * 1e7
+    all_reads['mean_sprm'] = rowMeans(all_reads[c('sprm_mat', 'srpm_pat')])
 
     # is this supposed to use total read counts, or is this ok?
     all_reads['bias_xi_div_xa'] = colSums(all_reads['num_reads_pat']) / colSums(all_reads['num_reads_mat'])
@@ -146,6 +143,22 @@ for (mouse_id in mouse_ids) {
 
 
     # ----------------------------------------------------------------------
+    # Filters
+
+
+    x_reads['mean_rpkm_gt_1'] <- as.integer(x_reads['mean_rpkm'] > 1)
+    x_reads[is.na(x_reads['mean_rpkm_gt_1']), 'mean_rpkm_gt_1'] <- 0
+
+    x_reads['xi_srpm_gte_2'] <- as.integer(x_reads['srpm_pat'] >= 2)
+    x_reads[is.na(x_reads['xi_srpm_gte_2']), 'xi_srpm_gte_2'] <- 0
+
+    filtered_data = x_reads[
+        (x_reads['mean_rpkm_gt_1'] != 0)
+        & (x_reads['xi_srpm_gte_2'] == 1),
+    ]
+
+
+    # ----------------------------------------------------------------------
     # Save
 
     # save data
@@ -158,7 +171,21 @@ for (mouse_id in mouse_ids) {
         
         write.table(
             x_reads,
-            file = file.path(out_dir, paste(mouse_id, '-x_reads.csv', sep='')),
+            file = file.path(out_dir, paste('x_reads-', mouse_id, '.csv', sep='')),
+            row.names = FALSE,
+            sep = ','
+        )
+
+        subset_cols = c(
+            'mouse_id', 'chromosome_mat', 'chromosome_pat', 'gene_id_mat', 'gene_id_pat',
+            'exon_length_mat', 'exon_length_pat',
+            'gene_name', 'num_reads_mat', 'num_reads_pat',
+            'lower_confidence_interval', 'upper_confidence_interval',
+            'sprm_mat', 'srpm_pat'
+        )
+        write.table(
+            filtered_data[subset_cols],
+            file = file.path(out_dir, paste('escape_genes-', mouse_id, '.csv', sep='')),
             row.names = FALSE,
             sep = ','
         )
