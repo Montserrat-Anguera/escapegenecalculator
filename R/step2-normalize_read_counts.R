@@ -180,9 +180,6 @@ norm_x_reads['male_xi_mean_srpm'] = rowMeans(norm_x_reads[male_pat_count_cols])*
 norm_x_reads['female_mean_srpm_xi_over_xa_ratio'] = norm_x_reads['female_xi_mean_srpm']/norm_x_reads['female_xa_mean_srpm']
 
 
-
-
-
 # ----------------------------------------------------------------------
 # Filters
 
