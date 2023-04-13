@@ -19,8 +19,9 @@ gene_id_col='gene_id'  # use 'locus' for Disteche's data
 zscore <- qnorm(0.99)  # was 0.975 in Zach's version, but Berletch's paper requires 0.99
 
 # in case total_num_reads is unavailable, use this to estimate the total_num_reads
+# In Berletch's 2015 paper, they got 9258991 snp-specific reads from 88842032 total reads
 estimate_total_num_reads=TRUE
-estimated_pct_snp_reads=0.121
+estimated_pct_snp_reads=0.104  # 9258991/88842032
 
 # File inputs
 file_ext='csv'
@@ -207,9 +208,6 @@ for (mouse_id in mouse_ids) {
 
     # Estimate total_num_reads, if necessary
     if (estimate_total_num_reads) {
-        # According to the Berletch paper, 0.121 of reads mapped to BL6
-        # So a diploid total_num_reads should be about double num_mat_reads / pct_snp_reads
-        # This is about the same ratio as the number of snp reads
         total_num_reads = num_snp_reads / estimated_pct_snp_reads
     } else {
         run_metadata <- read.csv(metadata_file, header=TRUE, sep=',', check.names=FALSE)
