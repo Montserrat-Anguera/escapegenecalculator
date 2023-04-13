@@ -8,7 +8,7 @@ source(file.path(wd, 'R', 'utils.R'))
 # options
 save=TRUE  # useful for troubleshooting
 keep_shared_genes=FALSE  # select on genes only available both gtf files. this is not implemented for now.
-merge_rpkms=TRUE  # old pipeline computed RPKM instead of bringing it in a priori
+merge_rpkms=TRUE  # old pipeline computed RPKM instead of bringing it
 gene_id_col='gene_id'  # use 'locus' for Disteche's data
 
 # Provide a z-score to be used in the confidence interval.
@@ -182,12 +182,20 @@ for (mouse_id in mouse_ids) {
 
     } else {
 
-        # This is how the old pipeline worked, but this is actually wrong
+    	# This is how the old pipeline worked, but this is actually wrong
         # The RPKM actually has to be computed a priori
         # I'm keeping this here so we can compare, but this should eventually be deprecated
-        # Also, in Zach's version, colSums is used to calculate the total_num_reads, which is wrong
-        all_reads['rpm_mat'] = all_reads['num_reads_mat'] / total_num_reads * 1e6
-        all_reads['rpm_pat'] = all_reads['num_reads_pat'] / total_num_reads * 1e6
+
+        # Rescaling to account for the fact that we're only using SNP-specific reads
+        num_snp_reads = sum(mat_reads[, 'count'] + pat_reads[, 'count'])
+        pct_reads = num_snp_reads / total_num_reads
+
+        # In Zach's version: rpm_mat = num_reads_mat / colSums(mat_reads[, 'count'])
+        # The correct way to implement this is actually
+        # rpm_mat = num_reads_mat / colSums(mat_reads[, 'count'] + pat_reads[, 'count'])
+        # Note that the total_num_reads washes out here, but I kept it for readability
+        all_reads['rpm_mat'] = (all_reads['num_reads_mat'] / total_num_reads * 1e6) / pct_reads
+        all_reads['rpm_pat'] = (all_reads['num_reads_pat'] / total_num_reads * 1e6) / pct_reads
 
         all_reads['rpkm_mat'] = all_reads['rpm_mat'] / all_reads["exon_length_mat"] * 1000
         all_reads['rpkm_pat'] = all_reads['rpm_pat'] / coalesce1(all_reads["exon_length_pat"], all_reads["exon_length_mat"]) * 1000
@@ -230,15 +238,19 @@ for (mouse_id in mouse_ids) {
     # ----------------------------------------------------------------------
     # Filters
 
-    x_reads['rpkm_gt_1'] <- as.integer(x_reads['rpkm'] > 1)
-    x_reads[is.na(x_reads['rpkm_gt_1']), 'rpkm_gt_1'] <- 0
 
     x_reads['xi_srpm_gte_2'] <- as.integer(x_reads['srpm_pat'] >= 2)
     x_reads[is.na(x_reads['xi_srpm_gte_2']), 'xi_srpm_gte_2'] <- 0
 
+    x_reads['rpkm_gt_1'] <- as.integer(x_reads['rpkm'] > 1)
+    x_reads[is.na(x_reads['rpkm_gt_1']), 'rpkm_gt_1'] <- 0
+
+    x_reads['lower_ci_gt_0'] <- as.integer(x_reads['lower_confidence_interval'] > 0)
+
     filtered_data = x_reads[
-        (x_reads['rpkm_gt_1'] != 0)
-        & (x_reads['xi_srpm_gte_2'] == 1),
+        (x_reads['rpkm_gt_1'] != 0) &
+        (x_reads['xi_srpm_gte_2'] == 1) &
+        (x_reads['lower_ci_gt_0'] == 1),
     ]
 
     # ----------------------------------------------------------------------
