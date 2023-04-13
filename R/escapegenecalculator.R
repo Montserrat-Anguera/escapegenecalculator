@@ -9,12 +9,15 @@ source(file.path(wd, 'R', 'utils.R'))
 # options
 save=TRUE  # useful for troubleshooting
 keep_shared_genes=FALSE  # select on genes only available both gtf files. this is not implemented for now.
-merge_rpkms=TRUE  # old pipeline computed RPKM instead of bringing it
+merge_rpkms=FALSE  # old pipeline computed RPKM instead of bringing it in
 gene_id_col='gene_id'  # use 'locus' for Disteche's data
 
 # Provide a z-score to be used in the confidence interval.
 zscore <- qnorm(0.99)  # was 0.975 in Zach's version, but Berletch's paper requires 0.99
-estimated_total_pct_snp_reads=0.112  # in case metadata file is unavailable, use this to estimate the total_num_reads
+
+# in case total_num_reads is unavailable, use this to estimate the total_num_reads
+estimate_total_num_reads=TRUE
+estimated_pct_snp_reads=0.121
 
 # File inputs
 file_ext='csv'
@@ -29,6 +32,7 @@ run_metadata_filename = 'run_metadata.csv'
 in_dir = data_dir
 read_counts_dir = file.path(in_dir, 'read_counts')
 rpkms_dir = file.path(in_dir, 'rpkms')
+metadata_file = file.path(in_dir, run_metadata_filename)
 
 out_dir = data_dir
 ref_dir = file.path(out_dir, "ref")
@@ -44,12 +48,18 @@ if (!dir.exists(rpkms_dir)) {
     merge_rpkms=FALSE
 }
 
+# in case we don't have the metadata_file
+if (!file.exists(metadata_file)) {
+    estimate_total_num_reads=TRUE
+}
+
+
 # select on genes only available both gtf files
 # not implemented
 if (keep_shared_genes | merge_rpkms==FALSE) {
     mat_exon_lengths_filepath = file.path(ref_dir, "exon_lengths-Mus_musculus.csv")
     pat_exon_lengths_filepath = file.path(ref_dir, "exon_lengths-Mus_musculus_casteij.csv")
-    # Other: "exon_lengths-Mus_musculus_casteij.csv"
+    # Other: "exon_lengths-Mus_musculus_spretus.csv"
 }
 
 # Start Log
@@ -61,6 +71,7 @@ if (save) {
     log_print(paste('output dir: ', file.path(out_dir)))
     log_print(paste('keep_shared_genes: ', keep_shared_genes))
     log_print(paste('merge_rpkms: ', merge_rpkms))
+    log_print(paste('estimate_total_num_reads: ', estimate_total_num_reads))
 } else {
     log_print(paste('save: ', save))
 }
@@ -72,9 +83,8 @@ if (save) {
 # Need the total_num_reads a priori
 metadata_file = file.path(in_dir, run_metadata_filename)
 if (file.exists(metadata_file)) {
-    run_metadata <- read.csv(, header=TRUE, sep=',', check.names=FALSE)
+    run_metadata <- read.csv(metadata_file, header=TRUE, sep=',', check.names=FALSE)
 }
-
 
 # Only need this if we're computing the RPKMs from the data here
 if (keep_shared_genes | merge_rpkms==FALSE) {
@@ -95,7 +105,10 @@ read_counts_filepaths <- list_files(read_counts_dir, ext=file_ext, recursive=TRU
 rpkms_filepaths <- list_files(rpkms_dir, ext='csv', recursive=TRUE)
 
 # need to edit this to be more robust
-mouse_ids = unique(unlist(lapply(basename(read_counts_filepaths), function(x) strsplit(x, '-')[[1]][2])))
+mouse_ids = unique(unlist(
+    lapply(basename(read_counts_filepaths),
+           function(x) strsplit(stringr::str_replace(x, 'read_counts-', ''), '-')[[1]][1]))
+)
 
 
 # mouse_id = mouse_ids[[1]]
@@ -112,12 +125,14 @@ for (mouse_id in mouse_ids) {
     # Calculate bias based on autosomal reads only. Should be pretty close to 1 if this is done right
     # In Zach's pipeline, the X chromosome is included in this calculation, whereas
     # Berletch specifies that this needs to be computed on the autosomal reads only
+    num_snp_reads = sum(mat_reads[, 'count']) + sum(pat_reads[, 'count'])
     num_autosomal_reads_mat = sum(
         mat_reads[(mat_reads['chromosome']!='X') & (mat_reads['chromosome']!='Y'), 'count'])
     num_autosomal_reads_pat = sum(
         pat_reads[(pat_reads['chromosome']!='X') & (pat_reads['chromosome']!='Y'), 'count'])
     bias_xi_div_xa <- num_autosomal_reads_pat/num_autosomal_reads_mat
 
+    log_print(paste('SNP Reads Count:', num_snp_reads))
     log_print(paste('Bias:', bias_xi_div_xa))
 
 
@@ -185,28 +200,27 @@ for (mouse_id in mouse_ids) {
     # filter Y chromosome, all the reads here should be 0 anyway
     all_reads <- all_reads[all_reads['chromosome_mat']!='Y',]
 
-    metadata_file = file.path(in_dir, run_metadata_filename)
-    if (file.exists(metadata_file)) {
-        run_metadata <- read.csv(, header=TRUE, sep=',', check.names=FALSE)
-        total_num_reads = run_metadata[run_metadata['mouse_id']==mouse_id, 'total_num_reads']
+    # Estimate total_num_reads, if necessary
+    if (estimate_total_num_reads) {
+        # According to the Berletch paper, 0.121 of reads mapped to BL6
+        # So a diploid total_num_reads should be about double num_mat_reads / pct_snp_reads
+        # This is about the same ratio as the number of snp reads
+        total_num_reads = num_snp_reads / estimated_pct_snp_reads
     } else {
-        # According to the Berletch paper, 0.121 of reads mapped to BL6 and 0.113 of reads mapped to Spretus
-        # If we take these at face value, this means sum of reads here is 1/(0.121+0.113) of the total_num_reads
-        num_snp_reads = sum(mat_reads[, 'count']) + sum(pat_reads[, 'count'])
-        total_num_reads = num_snp_reads / estimated_total_pct_snp_reads
+        run_metadata <- read.csv(metadata_file, header=TRUE, sep=',', check.names=FALSE)
+        total_num_reads = run_metadata[run_metadata['mouse_id']==mouse_id, 'total_num_reads']
     }
 
+    log_print(paste('Total num reads:', total_num_reads))
 
     # Compute SRPM (allele-specific SNP-containing exonic reads per 10 million uniquely mapped reads)
     # This requires a-priori knowledge of how many reads
     all_reads[c('srpm_mat', 'srpm_pat')] = all_reads[c('num_reads_mat', 'num_reads_pat')] / total_num_reads * 1e7
     all_reads['mean_srpm'] = rowMeans(all_reads[c('srpm_mat', 'srpm_pat')])
 
-
     # Either merge RPKMs (good) or compute them from the data (bad)
     # RPKM (reads per kilobase of exon per million reads mapped)
     if (merge_rpkms) {
-
         rpkms_file = rpkms_filepaths[grep(mouse_id, basename(rpkms_filepaths))]
         rpkms = read.csv(rpkms_file, header=TRUE, sep=',', check.names=FALSE)
         all_reads = merge(
@@ -223,14 +237,16 @@ for (mouse_id in mouse_ids) {
         # I'm keeping this here so we can compare, but this should eventually be deprecated
 
         # Rescaling to account for the fact that we're only using SNP-specific reads
-        pct_reads = num_snp_reads / total_num_reads
+        # Note that if you use the estimated_pct_snp_reads to estimate the total_num_reads, then
+        # the RPKM calculated becomes independent the estimated_pct_snp_reads
+        pct_snp_reads = num_snp_reads / total_num_reads
 
         # In Zach's version: rpm_mat = num_reads_mat / colSums(mat_reads[, 'count'])
         # The correct way to implement this is actually
         # rpm_mat = num_reads_mat / colSums(mat_reads[, 'count'] + pat_reads[, 'count'])
         # Note that the total_num_reads washes out here, but I kept it for readability
-        all_reads['rpm_mat'] = (all_reads['num_reads_mat'] / total_num_reads * 1e6) / pct_reads
-        all_reads['rpm_pat'] = (all_reads['num_reads_pat'] / total_num_reads * 1e6) / pct_reads
+        all_reads['rpm_mat'] = (all_reads['num_reads_mat'] / total_num_reads * 1e6) / pct_snp_reads
+        all_reads['rpm_pat'] = (all_reads['num_reads_pat'] / total_num_reads * 1e6) / pct_snp_reads
 
         all_reads['rpkm_mat'] = all_reads['rpm_mat'] / all_reads["exon_length_mat"] * 1000
         all_reads['rpkm_pat'] = all_reads['rpm_pat'] / coalesce1(all_reads["exon_length_pat"], all_reads["exon_length_mat"]) * 1000
