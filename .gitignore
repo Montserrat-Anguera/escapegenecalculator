@@ -11,3 +11,4 @@ escapegenecalculator.Rproj
 renv
 renv.lock
 .Rprofile
+notebooks

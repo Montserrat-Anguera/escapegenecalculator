@@ -12,11 +12,10 @@ data_dir = file.path(wd, 'data')
 raw_dir = file.path(data_dir, 'read_counts', 'raw_read_counts')
 out_dir = file.path(wd, 'data', 'output')
 run_metadata_filename = 'run_metadata.csv'
-output_filename = 'output.csv'
 
 
 # Provide a z-score to be used in the confidence interval.
-zscore <- qnorm(0.975)
+zscore <- qnorm(0.99)  # was 0.975 in Zach's version, but Berletch's paper requires 0.99
 
 
 # Start Log
@@ -43,6 +42,8 @@ filepaths <- list_files(raw_dir, ext='csv', recursive=TRUE)
 filenames = basename(filepaths)
 mouse_ids = unique(unlist(lapply(filenames, function(x) strsplit(x, '-')[[1]][1])))
 
+
+# mouse_id = mouse_ids[[1]]
 for (mouse_id in mouse_ids) {
 
     mat_file = filepaths[grep(paste(mouse_id, '.*mat', sep=''), filenames)]
@@ -54,11 +55,13 @@ for (mouse_id in mouse_ids) {
     # ----------------------------------------------------------------------
     # Read and preprocess data
 
+
     mat_reads = read.csv(mat_file, header=TRUE, sep=',', check.names=FALSE)
     # mat_reads['metadata'] = c(tools::file_path_sans_ext(basename(mat_file)))
     pat_reads = read.csv(pat_file, header=TRUE, sep=',', check.names=FALSE)
     # pat_reads['metadata'] = c(tools::file_path_sans_ext(basename(pat_file)))
     
+    # merge
     all_reads = merge(
         mat_reads[(mat_reads['gene_name']!=''), ],
         pat_reads[(pat_reads['gene_name']!=''), ],
@@ -89,10 +92,10 @@ for (mouse_id in mouse_ids) {
     # filter duplicates on maternal
     # note: there are still duplicates on paternal, but that might be ok
     all_reads <- all_reads[!duplicated(all_reads[, c('gene_id_mat', 'chromosome_mat')]),]
-    all_reads <- all_reads[all_reads['chromosome_pat']!='Y',]  # filter Y chromosome, there shouldn't be any anyway
+    all_reads <- all_reads[all_reads['chromosome_mat']!='Y',]  # filter Y chromosome, there shouldn't be any anyway
     # all_reads <- dplyr::distinct(all_reads)  # this doesn't actually do anything for this dataset
 
-    
+
     # Compute RPM (reads per million)
     all_reads[c('rpm_mat', 'rpm_pat')] = sweep(
         all_reads[c('num_reads_mat', 'num_reads_pat')], 2,
@@ -100,25 +103,30 @@ for (mouse_id in mouse_ids) {
     ) * 1e6
 
     # Compute RPKM (reads per kilobase of exon per million reads mapped)
+    # not sure why this differs so much, but it's not important for this analysis
     all_reads['rpkm_mat'] = all_reads['rpm_mat'] / all_reads["exon_length_mat"] * 1000
-    all_reads['rpkm_pat'] = all_reads['rpm_pat'] / all_reads["exon_length_pat"] * 1000
+    all_reads['rpkm_pat'] = all_reads['rpm_pat'] / coalesce1(all_reads["exon_length_pat"], all_reads["exon_length_mat"]) * 1000
     all_reads['mean_rpkm'] = rowMeans(all_reads[c('rpkm_mat', 'rpkm_pat')])
 
 
     # Compute SRPM (allele-specific SNP-containing exonic reads per 10 million uniquely mapped reads)
     # This requires a-priori knowledge of how many reads
     total_num_reads = run_metadata[run_metadata['mouse_id']==mouse_id, 'total_num_reads']
-    all_reads[c('sprm_mat', 'srpm_pat')] = all_reads[c('num_reads_mat', 'num_reads_pat')] / total_num_reads * 1e7
-    all_reads['mean_sprm'] = rowMeans(all_reads[c('sprm_mat', 'srpm_pat')])
-
-    # is this supposed to use total read counts, or is this ok?
-    all_reads['bias_xi_div_xa'] = colSums(all_reads['num_reads_pat']) / colSums(all_reads['num_reads_mat'])
+    all_reads[c('srpm_mat', 'srpm_pat')] = all_reads[c('num_reads_mat', 'num_reads_pat')] / total_num_reads * 1e7
+    all_reads['mean_srpm'] = rowMeans(all_reads[c('srpm_mat', 'srpm_pat')])
 
 
     # ----------------------------------------------------------------------
     # Compute confidence intervals from binomial model
 
     log_print('Computing confidence intervals...')
+
+    # Calculate bias based on autosomal reads only. Should be pretty close to 1 if this is done right
+    num_autosomal_reads_mat = sum(
+        mat_reads[(mat_reads['chromosome']!='X') & (mat_reads['chromosome']!='Y'), 'count'])
+    num_autosomal_reads_pat = sum(
+        pat_reads[(pat_reads['chromosome']!='X') & (pat_reads['chromosome']!='Y'), 'count'])
+    bias_xi_div_xa <- num_autosomal_reads_pat/num_autosomal_reads_mat
 
     # subset for downstream analysis
     x_reads <- all_reads[all_reads['chromosome_mat']=='X',]
@@ -128,23 +136,25 @@ for (mouse_id in mouse_ids) {
     x_reads[is.na(x_reads[, 'pct_xi']), 'pct_xi'] <- 0  # fillna with 0
 
     # human readable
-    bias_xi_div_xa <- x_reads['bias_xi_div_xa']
     total_reads <- x_reads['total_reads']  # n_i
     pct_xi <- x_reads['pct_xi']
 
     x_reads['corrected_pct_xi'] <- pct_xi/(pct_xi+bias_xi_div_xa*(1-pct_xi))  # correction reduces to pct_xi if bias=1, eg. mouse_4
     corrected_pct_xi <- x_reads['corrected_pct_xi']
 
-    x_reads['lower_confidence_interval'] <- corrected_pct_xi - zscore * (sqrt(corrected_pct_xi*(1-corrected_pct_xi)/total_reads))
+    x_reads['lower_confidence_interval'] <- corrected_pct_xi - zscore * (
+        sqrt(corrected_pct_xi*(1-corrected_pct_xi)/total_reads))
     x_reads[is.na(x_reads[, 'lower_confidence_interval']), 'lower_confidence_interval'] <- 0  # fillna with 0
 
-    x_reads['upper_confidence_interval'] <- corrected_pct_xi + zscore * (sqrt(corrected_pct_xi *(1-corrected_pct_xi )/total_reads))
+    x_reads['upper_confidence_interval'] <- corrected_pct_xi + zscore * (
+        sqrt(corrected_pct_xi *(1-corrected_pct_xi )/total_reads))
     x_reads[is.na(x_reads[, 'upper_confidence_interval']), 'upper_confidence_interval'] <- 0  # fillna with 0
 
+    # the numbers are close, not an exact match, but it could just be rounding errors on their part
+    
 
     # ----------------------------------------------------------------------
     # Filters
-
 
     x_reads['mean_rpkm_gt_1'] <- as.integer(x_reads['mean_rpkm'] > 1)
     x_reads[is.na(x_reads['mean_rpkm_gt_1']), 'mean_rpkm_gt_1'] <- 0
@@ -177,11 +187,14 @@ for (mouse_id in mouse_ids) {
         )
 
         subset_cols = c(
-            'mouse_id', 'chromosome_mat', 'chromosome_pat', 'gene_id_mat', 'gene_id_pat',
-            'exon_length_mat', 'exon_length_pat',
-            'gene_name', 'num_reads_mat', 'num_reads_pat',
+            'mouse_id', 
+            # 'chromosome_mat', 'chromosome_pat', 'gene_id_mat', 'gene_id_pat',
+            # 'exon_length_mat', 'exon_length_pat',
+            'gene_name', "locus_mat", 'num_reads_mat', 'num_reads_pat',
             'lower_confidence_interval', 'upper_confidence_interval',
-            'sprm_mat', 'srpm_pat'
+            'srpm_mat', 'srpm_pat',
+            'mean_rpkm', 'mean_rpkm_gt_1'
+
         )
         write.table(
             filtered_data[subset_cols],
