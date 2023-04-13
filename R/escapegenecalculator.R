@@ -110,6 +110,10 @@ mouse_ids = unique(unlist(
            function(x) strsplit(stringr::str_replace(x, 'read_counts-', ''), '-')[[1]][1]))
 )
 
+if (length(rpkms_filepaths)==0) {
+	log_print("No files found!")
+}
+
 
 # mouse_id = mouse_ids[[1]]
 for (mouse_id in mouse_ids) {
