@@ -3,6 +3,7 @@
 
 library(logr)
 wd = dirname(this.path::here())  # wd = '~/github/R/escapegenecalculator'
+source(file.path(wd, 'R', 'columns.R'))
 source(file.path(wd, 'R', 'utils.R'))
 
 
@@ -110,7 +111,7 @@ mouse_ids = unique(unlist(
            function(x) strsplit(stringr::str_replace(x, 'read_counts-', ''), '-')[[1]][1]))
 )
 
-log_print(paste(Sys.time(), "Number of files found:", length(rpkms_filepaths)))
+log_print(paste(Sys.time(), "Number of files found:", length(read_counts_filepaths)))
 
     
 # mouse_id = mouse_ids[[1]]
@@ -214,13 +215,14 @@ for (mouse_id in mouse_ids) {
         run_metadata <- read.csv(metadata_file, header=TRUE, sep=',', check.names=FALSE)
         total_num_reads = run_metadata[run_metadata['mouse_id']==mouse_id, 'total_num_reads']
     }
+    all_reads['total_num_reads'] = total_num_reads
 
     log_print(paste(Sys.time(), 'Total num reads:', total_num_reads))
 
     # Compute SRPM (allele-specific SNP-containing exonic reads per 10 million uniquely mapped reads)
     # This requires a-priori knowledge of how many reads
     all_reads[c('srpm_mat', 'srpm_pat')] = all_reads[c('num_reads_mat', 'num_reads_pat')] / total_num_reads * 1e7
-    all_reads['mean_srpm'] = rowMeans(all_reads[c('srpm_mat', 'srpm_pat')])
+    # all_reads['mean_srpm'] = rowMeans(all_reads[c('srpm_mat', 'srpm_pat')])  # not used
 
     # Either merge RPKMs (good) or compute them from the data (bad)
     # RPKM (reads per kilobase of exon per million reads mapped)
@@ -322,9 +324,9 @@ for (mouse_id in mouse_ids) {
         if (!dir.exists(file.path(out_dir, 'x_reads'))) {
             dir.create(file.path(out_dir, 'x_reads'))
         }
-        
+
         write.table(
-            x_reads,
+            x_reads[x_read_output_cols],
             file = file.path(out_dir, 'x_reads', paste('x_reads-', mouse_id, '.csv', sep='')),
             row.names = FALSE,
             sep = ','
@@ -337,15 +339,8 @@ for (mouse_id in mouse_ids) {
             dir.create(file.path(out_dir, 'escape_genes'))
         }
 
-        subset_cols = c(
-            'mouse_id',
-            'gene_name', 'num_reads_mat', 'num_reads_pat',
-            'lower_confidence_interval', 'upper_confidence_interval',
-            'srpm_mat', 'srpm_pat', 'rpkm'
-        )
-
         write.table(
-            escape_genes[subset_cols],
+            escape_genes[escape_gene_cols],
             file = file.path(out_dir, 'escape_genes', paste('escape_genes-', mouse_id, '.csv', sep='')),
             row.names = FALSE,
             sep = ','
@@ -353,8 +348,7 @@ for (mouse_id in mouse_ids) {
     }
 
     loop_end_time = Sys.time()
-    log_print(paste(loop_end_time, 'Loop completed!'))
-    log_print(paste(Sys.time(), "Loop completed in:", difftime(loop_end_time, loop_start_time)))
+    log_print(paste(Sys.time(), "Loop completed in:", difftime(loop_end_time, loop_start_time), '!'))
 
 }
 
