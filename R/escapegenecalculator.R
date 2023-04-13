@@ -13,9 +13,11 @@ gene_id_col='gene_id'  # use 'locus' for Disteche's data
 
 # Provide a z-score to be used in the confidence interval.
 zscore <- qnorm(0.99)  # was 0.975 in Zach's version, but Berletch's paper requires 0.99
+estimated_total_pct_snp_reads=0.234  # in case metadata file is unavailable, use this to estimate the total_num_reads
 
 
 # File inputs
+file_ext='csv'
 in_dir = file.path(wd, 'data')
 read_counts_dir = file.path(in_dir, 'read_counts')
 rpkms_dir = file.path(in_dir, 'rpkms')
@@ -24,11 +26,23 @@ out_dir = file.path(wd, 'data')
 ref_dir = file.path(wd, "data", "ref")
 
 
+
+# in case we don't have these
+if (!dir.exists(rpkms_dir)) {
+    merge_rpkms=FALSE
+}
+
+if (file_ext=='tsv') {
+    sep='\t'
+} else {
+    sep=','
+}
+
 # select on genes only available both gtf files
 # should we really have this?
 if (keep_shared_genes | merge_rpkms==FALSE) {
     mat_exon_lengths_filepath = file.path(ref_dir, "exon_lengths-Mus_musculus.csv")
-    pat_exon_lengths_filepath = file.path(ref_dir, "exon_lengths-Mus_spretus.csv")
+    pat_exon_lengths_filepath = file.path(ref_dir, "exon_lengths-Mus_musculus_casteij.csv")
     # Other: "exon_lengths-Mus_musculus_casteij.csv"
 }
 gene_id_cols = c(paste(gene_id_col, '_mat',  sep=''), paste(gene_id_col, '_pat',  sep=''))  # misc
@@ -52,7 +66,11 @@ if (save) {
 # Bring in metadata
 
 # Need the total_num_reads a priori
-run_metadata <- read.csv(file.path(in_dir, run_metadata_filename), header=TRUE, sep=',', check.names=FALSE)
+metadata_file = file.path(in_dir, run_metadata_filename)
+if (file.exists(metadata_file)) {
+    run_metadata <- read.csv(, header=TRUE, sep=',', check.names=FALSE)
+}
+
 
 # Only need this if we're computing the RPKMs from the data here
 if (keep_shared_genes | merge_rpkms==FALSE) {
@@ -69,8 +87,10 @@ if (keep_shared_genes | merge_rpkms==FALSE) {
 # Read Data
 
 # Required naming convention: read_counts-rep_1-female-mat-bl6.csv
-read_counts_filepaths <- list_files(read_counts_dir, ext='csv', recursive=TRUE)
+read_counts_filepaths <- list_files(read_counts_dir, ext=file_ext, recursive=TRUE)
 rpkms_filepaths <- list_files(rpkms_dir, ext='csv', recursive=TRUE)
+
+# need to edit this to be more robust
 mouse_ids = unique(unlist(lapply(basename(read_counts_filepaths), function(x) strsplit(x, '-')[[1]][2])))
 
 
@@ -79,8 +99,8 @@ for (mouse_id in mouse_ids) {
 
     mat_file = read_counts_filepaths[grep(paste(mouse_id, '.*mat', sep=''), basename(read_counts_filepaths))]
     pat_file = read_counts_filepaths[grep(paste(mouse_id, '.*pat', sep=''), basename(read_counts_filepaths))]
-    mat_reads = read.csv(mat_file, header=TRUE, sep=',', check.names=FALSE)
-    pat_reads = read.csv(pat_file, header=TRUE, sep=',', check.names=FALSE)
+    mat_reads = read.csv(mat_file, header=TRUE, sep=sep, check.names=FALSE)
+    pat_reads = read.csv(pat_file, header=TRUE, sep=sep, check.names=FALSE)
 
 
     log_print(paste('Processing', basename(mat_file), basename(pat_file), '...'))
@@ -148,21 +168,32 @@ for (mouse_id in mouse_ids) {
 
 
     # ----------------------------------------------------------------------
-    # Filter data
+    # Compute metrics
 
     # Duplicates
-    # Not sure when this would be relevant. The potential for this to break the pipeline is too high.
+    # The potential for this to break the pipeline is too high.
     # We need to disable this for the Berletch dataset, because this filters out all genes with a NULL gene_id
     # all_reads <- all_reads[!duplicated(all_reads[, c('gene_id_mat', 'chromosome_mat')]),]
     # all_reads <- dplyr::distinct(all_reads)  # this doesn't actually do anything for this dataset
 
+
     # filter Y chromosome, all the reads here should be 0 anyway
     all_reads <- all_reads[all_reads['chromosome_mat']!='Y',]
+
+    metadata_file = file.path(in_dir, run_metadata_filename)
+    if (file.exists(metadata_file)) {
+        run_metadata <- read.csv(, header=TRUE, sep=',', check.names=FALSE)
+        total_num_reads = run_metadata[run_metadata['mouse_id']==mouse_id, 'total_num_reads']
+    } else {
+        # According to the Berletch paper, 0.121 of reads mapped to BL6 and 0.113 of reads mapped to Spretus
+        # If we take these at face value, this means sum of reads here is 1/(0.121+0.113) of the total_num_reads
+        num_snp_reads = sum(mat_reads[, 'count']) + sum(pat_reads[, 'count'])
+        total_num_reads = num_snp_reads / estimated_total_pct_snp_reads
+    }
 
 
     # Compute SRPM (allele-specific SNP-containing exonic reads per 10 million uniquely mapped reads)
     # This requires a-priori knowledge of how many reads
-    total_num_reads = run_metadata[run_metadata['mouse_id']==mouse_id, 'total_num_reads']
     all_reads[c('srpm_mat', 'srpm_pat')] = all_reads[c('num_reads_mat', 'num_reads_pat')] / total_num_reads * 1e7
     all_reads['mean_srpm'] = rowMeans(all_reads[c('srpm_mat', 'srpm_pat')])
 
@@ -182,12 +213,11 @@ for (mouse_id in mouse_ids) {
 
     } else {
 
-    	# This is how the old pipeline worked, but this is actually wrong
+        # This is how the old pipeline worked, but this is actually wrong
         # The RPKM actually has to be computed a priori
         # I'm keeping this here so we can compare, but this should eventually be deprecated
 
         # Rescaling to account for the fact that we're only using SNP-specific reads
-        num_snp_reads = sum(mat_reads[, 'count'] + pat_reads[, 'count'])
         pct_reads = num_snp_reads / total_num_reads
 
         # In Zach's version: rpm_mat = num_reads_mat / colSums(mat_reads[, 'count'])
@@ -275,7 +305,7 @@ for (mouse_id in mouse_ids) {
             'mouse_id', 
             # 'chromosome_mat', 'chromosome_pat', gene_id_cols[0], gene_id_cols[1],
             # 'exon_length_mat', 'exon_length_pat',
-            'gene_name', "locus_mat", 'num_reads_mat', 'num_reads_pat',
+            'gene_name', 'num_reads_mat', 'num_reads_pat',
             'lower_confidence_interval', 'upper_confidence_interval',
             'srpm_mat', 'srpm_pat',
             'rpkm' # 'rpkm_gt_1'
