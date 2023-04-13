@@ -45,6 +45,7 @@ escape_gene_cols = c(
     'gene_name',
     'num_reads_mat',
     'num_reads_pat',
+    'ratio_xi_over_xa',
     'lower_confidence_interval',
     'upper_confidence_interval',
     'srpm_mat',

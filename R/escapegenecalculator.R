@@ -1,5 +1,7 @@
-# This is a rewrite of the pipeline to match Berletch et al.
-## Computes RPM, RPKM, SRPM and filters the RPKMs using the confidence_intervals
+## This pipeline is based on Berletch and Disteche's 2015 paper on XCI escape in mouse tissues
+## It takes SNP-specific mapped read counts as input,
+## normalizes, computes confidence intervals, then outputs a list of escape genes.
+
 
 library(logr)
 wd = dirname(this.path::here())  # wd = '~/github/R/escapegenecalculator'
@@ -26,7 +28,6 @@ data_dir = file.path(wd, 'data')
 run_metadata_filename = 'run_metadata.csv'
 
 
-
 # ----------------------------------------------------------------------
 # Pre-script settings
 
@@ -36,7 +37,7 @@ rpkms_dir = file.path(in_dir, 'rpkms')
 metadata_file = file.path(in_dir, run_metadata_filename)
 
 out_dir = data_dir
-ref_dir = file.path(out_dir, "ref")
+ref_dir = file.path(wd, "ref")
 
 if (file_ext=='tsv') {
     sep='\t'
@@ -68,8 +69,7 @@ start_time = Sys.time()
 log <- log_open(paste("escapegenecalculator ", start_time, '.log', sep=''))
 log_print(paste('Script started at:', start_time))
 if (save) {
-    log_print(paste(Sys.time(), 'input dir: ', file.path(in_dir)))
-    log_print(paste(Sys.time(), 'output dir: ', file.path(out_dir)))
+    log_print(paste(Sys.time(), 'data_dir: ', file.path(data_dir)))
     log_print(paste(Sys.time(), 'keep_shared_genes: ', keep_shared_genes))
     log_print(paste(Sys.time(), 'merge_rpkms: ', merge_rpkms))
     log_print(paste(Sys.time(), 'estimate_total_num_reads: ', estimate_total_num_reads))
@@ -216,6 +216,7 @@ for (mouse_id in mouse_ids) {
         total_num_reads = run_metadata[run_metadata['mouse_id']==mouse_id, 'total_num_reads']
     }
     all_reads['total_num_reads'] = total_num_reads
+    all_reads['ratio_xi_over_xa'] = all_reads['num_reads_pat'] / all_reads['num_reads_mat']
 
     log_print(paste(Sys.time(), 'Total num reads:', total_num_reads))
 
@@ -288,13 +289,9 @@ for (mouse_id in mouse_ids) {
         sqrt(corrected_pct_xi *(1-corrected_pct_xi )/total_reads))
     x_reads[is.na(x_reads[, 'upper_confidence_interval']), 'upper_confidence_interval'] <- 0  # fillna with 0
 
-    # the numbers are VERY close, but not an exact match
-    # maybe it could just be rounding errors on their part
-
 
     # ----------------------------------------------------------------------
     # Filters
-
 
     x_reads['xi_srpm_gte_2'] <- as.integer(x_reads['srpm_pat'] >= 2)
     x_reads[is.na(x_reads['xi_srpm_gte_2']), 'xi_srpm_gte_2'] <- 0
@@ -304,7 +301,7 @@ for (mouse_id in mouse_ids) {
 
     x_reads['lower_ci_gt_0'] <- as.integer(x_reads['lower_confidence_interval'] > 0)
 
-    escape_genes = x_reads[
+    filtered_x_reads = x_reads[
         (x_reads['rpkm_gt_1'] != 0) &
         (x_reads['xi_srpm_gte_2'] == 1) &
         (x_reads['lower_ci_gt_0'] == 1),
@@ -338,9 +335,9 @@ for (mouse_id in mouse_ids) {
         if (!dir.exists(file.path(out_dir, 'escape_genes'))) {
             dir.create(file.path(out_dir, 'escape_genes'))
         }
-
+        escape_genes = filtered_x_reads[, escape_gene_cols]
         write.table(
-            escape_genes[escape_gene_cols],
+            escape_genes[order(escape_genes[, 'rpkm'], decreasing=TRUE), ],
             file = file.path(out_dir, 'escape_genes', paste('escape_genes-', mouse_id, '.csv', sep='')),
             row.names = FALSE,
             sep = ','
