@@ -5,6 +5,7 @@ library(logr)
 wd = dirname(this.path::here())  # wd = '~/github/R/escapegenecalculator'
 source(file.path(wd, 'R', 'utils.R'))
 
+
 # options
 save=TRUE  # useful for troubleshooting
 keep_shared_genes=FALSE  # select on genes only available both gtf files. this is not implemented for now.
@@ -13,24 +14,24 @@ gene_id_col='gene_id'  # use 'locus' for Disteche's data
 
 # Provide a z-score to be used in the confidence interval.
 zscore <- qnorm(0.99)  # was 0.975 in Zach's version, but Berletch's paper requires 0.99
-estimated_total_pct_snp_reads=0.234  # in case metadata file is unavailable, use this to estimate the total_num_reads
-
+estimated_total_pct_snp_reads=0.112  # in case metadata file is unavailable, use this to estimate the total_num_reads
 
 # File inputs
 file_ext='csv'
-in_dir = file.path(wd, 'data')
+data_dir = file.path(wd, 'data')
+run_metadata_filename = 'run_metadata.csv'
+
+
+
+# ----------------------------------------------------------------------
+# Pre-script settings
+
+in_dir = data_dir
 read_counts_dir = file.path(in_dir, 'read_counts')
 rpkms_dir = file.path(in_dir, 'rpkms')
-run_metadata_filename = 'run_metadata.csv'
-out_dir = file.path(wd, 'data')
-ref_dir = file.path(wd, "data", "ref")
 
-
-
-# in case we don't have these
-if (!dir.exists(rpkms_dir)) {
-    merge_rpkms=FALSE
-}
+out_dir = data_dir
+ref_dir = file.path(out_dir, "ref")
 
 if (file_ext=='tsv') {
     sep='\t'
@@ -38,15 +39,18 @@ if (file_ext=='tsv') {
     sep=','
 }
 
+# in case we don't have rpkms
+if (!dir.exists(rpkms_dir)) {
+    merge_rpkms=FALSE
+}
+
 # select on genes only available both gtf files
-# should we really have this?
+# not implemented
 if (keep_shared_genes | merge_rpkms==FALSE) {
     mat_exon_lengths_filepath = file.path(ref_dir, "exon_lengths-Mus_musculus.csv")
     pat_exon_lengths_filepath = file.path(ref_dir, "exon_lengths-Mus_musculus_casteij.csv")
     # Other: "exon_lengths-Mus_musculus_casteij.csv"
 }
-gene_id_cols = c(paste(gene_id_col, '_mat',  sep=''), paste(gene_id_col, '_pat',  sep=''))  # misc
-
 
 # Start Log
 start_time = Sys.time()
@@ -161,6 +165,7 @@ for (mouse_id in mouse_ids) {
     all_reads['bias_xi_div_xa'] <- bias_xi_div_xa
 
     # reindex columns
+    gene_id_cols = c(paste(gene_id_col, '_mat',  sep=''), paste(gene_id_col, '_pat',  sep=''))
     index_cols = c('mouse_id', 'gene_name',
                    gene_id_cols[0], 'chromosome_mat', gene_id_cols[1], 'chromosome_pat')
     value_cols = items_in_a_not_b(colnames(all_reads), index_cols)
@@ -277,7 +282,7 @@ for (mouse_id in mouse_ids) {
 
     x_reads['lower_ci_gt_0'] <- as.integer(x_reads['lower_confidence_interval'] > 0)
 
-    filtered_data = x_reads[
+    escape_genes = x_reads[
         (x_reads['rpkm_gt_1'] != 0) &
         (x_reads['xi_srpm_gte_2'] == 1) &
         (x_reads['lower_ci_gt_0'] == 1),
@@ -288,32 +293,38 @@ for (mouse_id in mouse_ids) {
 
     # save data
     if (save) {
-        # log_print("Writing data...")
 
-        if (!dir.exists(out_dir)) {
-            dir.create(out_dir)
+        # ----------------------------------------------------------------------
+        # X reads
+
+        if (!dir.exists(file.path(out_dir, 'x_reads'))) {
+            dir.create(file.path(out_dir, 'x_reads'))
         }
         
         write.table(
             x_reads,
-            file = file.path(out_dir, paste('x_reads-', mouse_id, '.csv', sep='')),
+            file = file.path(out_dir, 'x_reads', paste('x_reads-', mouse_id, '.csv', sep='')),
             row.names = FALSE,
             sep = ','
         )
 
+        # ----------------------------------------------------------------------
+        # Escape genes
+
+        if (!dir.exists(file.path(out_dir, 'escape_genes'))) {
+            dir.create(file.path(out_dir, 'escape_genes'))
+        }
+
         subset_cols = c(
-            'mouse_id', 
-            # 'chromosome_mat', 'chromosome_pat', gene_id_cols[0], gene_id_cols[1],
-            # 'exon_length_mat', 'exon_length_pat',
+            'mouse_id',
             'gene_name', 'num_reads_mat', 'num_reads_pat',
             'lower_confidence_interval', 'upper_confidence_interval',
-            'srpm_mat', 'srpm_pat',
-            'rpkm' # 'rpkm_gt_1'
+            'srpm_mat', 'srpm_pat', 'rpkm'
         )
 
         write.table(
-            filtered_data[subset_cols],
-            file = file.path(out_dir, paste('escape_genes-', mouse_id, '.csv', sep='')),
+            escape_genes[subset_cols],
+            file = file.path(out_dir, 'escape_genes', paste('escape_genes-', mouse_id, '.csv', sep='')),
             row.names = FALSE,
             sep = ','
         )
