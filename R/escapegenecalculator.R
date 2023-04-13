@@ -65,15 +65,15 @@ if (keep_shared_genes | merge_rpkms==FALSE) {
 # Start Log
 start_time = Sys.time()
 log <- log_open(paste("escapegenecalculator ", start_time, '.log', sep=''))
-log_print(paste('Start ', start_time))
+log_print(paste('Script started at:', start_time))
 if (save) {
-    log_print(paste('input dir: ', file.path(in_dir)))
-    log_print(paste('output dir: ', file.path(out_dir)))
-    log_print(paste('keep_shared_genes: ', keep_shared_genes))
-    log_print(paste('merge_rpkms: ', merge_rpkms))
-    log_print(paste('estimate_total_num_reads: ', estimate_total_num_reads))
+    log_print(paste(Sys.time(), 'input dir: ', file.path(in_dir)))
+    log_print(paste(Sys.time(), 'output dir: ', file.path(out_dir)))
+    log_print(paste(Sys.time(), 'keep_shared_genes: ', keep_shared_genes))
+    log_print(paste(Sys.time(), 'merge_rpkms: ', merge_rpkms))
+    log_print(paste(Sys.time(), 'estimate_total_num_reads: ', estimate_total_num_reads))
 } else {
-    log_print(paste('save: ', save))
+    log_print(paste(Sys.time(), 'save: ', save))
 }
 
 
@@ -110,21 +110,21 @@ mouse_ids = unique(unlist(
            function(x) strsplit(stringr::str_replace(x, 'read_counts-', ''), '-')[[1]][1]))
 )
 
-if (length(rpkms_filepaths)==0) {
-	log_print("No files found!")
-}
+log_print(paste(Sys.time(), "Number of files found:", length(rpkms_filepaths)))
 
-
+    
 # mouse_id = mouse_ids[[1]]
 for (mouse_id in mouse_ids) {
 
+    loop_start_time =  Sys.time()
+    log_print(paste(loop_start_time, 'Loop started!'))
+    
     mat_file = read_counts_filepaths[grep(paste(mouse_id, '.*mat', sep=''), basename(read_counts_filepaths))]
     pat_file = read_counts_filepaths[grep(paste(mouse_id, '.*pat', sep=''), basename(read_counts_filepaths))]
+    log_print(paste(Sys.time(), 'Processing', basename(mat_file), basename(pat_file), '...'))
+
     mat_reads = read.csv(mat_file, header=TRUE, sep=sep, check.names=FALSE)
     pat_reads = read.csv(pat_file, header=TRUE, sep=sep, check.names=FALSE)
-
-
-    log_print(paste('Processing', basename(mat_file), basename(pat_file), '...'))
 
     # Calculate bias based on autosomal reads only. Should be pretty close to 1 if this is done right
     # In Zach's pipeline, the X chromosome is included in this calculation, whereas
@@ -136,8 +136,8 @@ for (mouse_id in mouse_ids) {
         pat_reads[(pat_reads['chromosome']!='X') & (pat_reads['chromosome']!='Y'), 'count'])
     bias_xi_div_xa <- num_autosomal_reads_pat/num_autosomal_reads_mat
 
-    log_print(paste('SNP Reads Count:', num_snp_reads))
-    log_print(paste('Bias:', bias_xi_div_xa))
+    log_print(paste(Sys.time(), 'SNP Reads Count:', num_snp_reads))
+    log_print(paste(Sys.time(), 'Bias:', bias_xi_div_xa))
 
 
     # ----------------------------------------------------------------------
@@ -215,7 +215,7 @@ for (mouse_id in mouse_ids) {
         total_num_reads = run_metadata[run_metadata['mouse_id']==mouse_id, 'total_num_reads']
     }
 
-    log_print(paste('Total num reads:', total_num_reads))
+    log_print(paste(Sys.time(), 'Total num reads:', total_num_reads))
 
     # Compute SRPM (allele-specific SNP-containing exonic reads per 10 million uniquely mapped reads)
     # This requires a-priori knowledge of how many reads
@@ -314,6 +314,8 @@ for (mouse_id in mouse_ids) {
     # save data
     if (save) {
 
+        log_print(paste(Sys.time(), "Writing data..."))
+
         # ----------------------------------------------------------------------
         # X reads
 
@@ -350,7 +352,13 @@ for (mouse_id in mouse_ids) {
         )
     }
 
+    loop_end_time = Sys.time()
+    log_print(paste(loop_end_time, 'Loop completed!'))
+    log_print(paste(Sys.time(), "Loop completed in:", difftime(loop_end_time, loop_start_time)))
+
 }
 
-
-
+end_time = Sys.time()
+log_print(paste('Script ended at:', Sys.time()))
+log_print(paste("Script completed in:", difftime(end_time, start_time)))
+log_close()
