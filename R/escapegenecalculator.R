@@ -4,28 +4,34 @@
 library(logr)
 wd = dirname(this.path::here())  # wd = '~/github/R/escapegenecalculator'
 source(file.path(wd, 'R', 'utils.R'))
+
+# options
 save=TRUE  # useful for troubleshooting
-keep_shared_genes=FALSE  # select on genes only available both gtf files
-compute_rpkm=TRUE  # troubleshooting
+keep_shared_genes=FALSE  # select on genes only available both gtf files. this is not implemented for now.
+merge_rpkms=TRUE  # old pipeline computed RPKM instead of bringing it in a priori
+gene_id_col='gene_id'  # use 'locus' for Disteche's data
+
+# Provide a z-score to be used in the confidence interval.
+zscore <- qnorm(0.99)  # was 0.975 in Zach's version, but Berletch's paper requires 0.99
 
 
-# Input parameters
+# File inputs
 in_dir = file.path(wd, 'data')
-raw_dir = file.path(in_dir, 'read_counts')
+read_counts_dir = file.path(in_dir, 'read_counts')
+rpkms_dir = file.path(in_dir, 'rpkms')
 run_metadata_filename = 'run_metadata.csv'
 out_dir = file.path(wd, 'data')
+ref_dir = file.path(wd, "data", "ref")
+
 
 # select on genes only available both gtf files
 # should we really have this?
-if (keep_shared_genes) {
-    ref_dir = file.path(wd, "data", "ref")
+if (keep_shared_genes | merge_rpkms==FALSE) {
     mat_exon_lengths_filepath = file.path(ref_dir, "exon_lengths-Mus_musculus.csv")
     pat_exon_lengths_filepath = file.path(ref_dir, "exon_lengths-Mus_spretus.csv")
     # Other: "exon_lengths-Mus_musculus_casteij.csv"
 }
-
-# Provide a z-score to be used in the confidence interval.
-zscore <- qnorm(0.99)  # was 0.975 in Zach's version, but Berletch's paper requires 0.99
+gene_id_cols = c(paste(gene_id_col, '_mat',  sep=''), paste(gene_id_col, '_pat',  sep=''))  # misc
 
 
 # Start Log
@@ -36,46 +42,48 @@ if (save) {
     log_print(paste('input dir: ', file.path(in_dir)))
     log_print(paste('output dir: ', file.path(out_dir)))
     log_print(paste('keep_shared_genes: ', keep_shared_genes))
+    log_print(paste('merge_rpkms: ', merge_rpkms))
 } else {
     log_print(paste('save: ', save))
 }
 
 
 # ----------------------------------------------------------------------
-# Read Data
-
+# Bring in metadata
 
 # Need the total_num_reads a priori
 run_metadata <- read.csv(file.path(in_dir, run_metadata_filename), header=TRUE, sep=',', check.names=FALSE)
 
-
-# select on genes only available both gtf files
-# should we really have this?
-if (keep_shared_genes) {
+# Only need this if we're computing the RPKMs from the data here
+if (keep_shared_genes | merge_rpkms==FALSE) {
     mat_exon_lengths <- read.csv(mat_exon_lengths_filepath, na.string="NA", stringsAsFactors=FALSE,)
     pat_exon_lengths <- read.csv(pat_exon_lengths_filepath, na.string="NA", stringsAsFactors=FALSE,)
+
+    # this was implemented in the old pipeline not currently implemented
+    # I think it's bad practice to only look at genes that are found in these gtf files
     shared_genes = intersect(mat_exon_lengths[, 'gene_name'], pat_exon_lengths[, 'gene_name'])
 }
 
 
-filepaths <- list_files(raw_dir, ext='csv', recursive=TRUE)
-filenames = basename(filepaths)
-mouse_ids = unique(unlist(lapply(filenames, function(x) strsplit(x, '-')[[1]][1])))
+# ----------------------------------------------------------------------
+# Read Data
+
+# Required naming convention: read_counts-rep_1-female-mat-bl6.csv
+read_counts_filepaths <- list_files(read_counts_dir, ext='csv', recursive=TRUE)
+rpkms_filepaths <- list_files(rpkms_dir, ext='csv', recursive=TRUE)
+mouse_ids = unique(unlist(lapply(basename(read_counts_filepaths), function(x) strsplit(x, '-')[[1]][2])))
 
 
 # mouse_id = mouse_ids[[1]]
 for (mouse_id in mouse_ids) {
 
-    mat_file = filepaths[grep(paste(mouse_id, '.*mat', sep=''), filenames)]
-    pat_file = filepaths[grep(paste(mouse_id, '.*pat', sep=''), filenames)]
+    mat_file = read_counts_filepaths[grep(paste(mouse_id, '.*mat', sep=''), basename(read_counts_filepaths))]
+    pat_file = read_counts_filepaths[grep(paste(mouse_id, '.*pat', sep=''), basename(read_counts_filepaths))]
+    mat_reads = read.csv(mat_file, header=TRUE, sep=',', check.names=FALSE)
+    pat_reads = read.csv(pat_file, header=TRUE, sep=',', check.names=FALSE)
+
 
     log_print(paste('Processing', basename(mat_file), basename(pat_file), '...'))
-
-    mat_reads = read.csv(mat_file, header=TRUE, sep=',', check.names=FALSE)
-    # mat_reads['metadata'] = c(tools::file_path_sans_ext(basename(mat_file)))
-    pat_reads = read.csv(pat_file, header=TRUE, sep=',', check.names=FALSE)
-    # pat_reads['metadata'] = c(tools::file_path_sans_ext(basename(pat_file)))
-
 
     # Calculate bias based on autosomal reads only. Should be pretty close to 1 if this is done right
     # In Zach's pipeline, the X chromosome is included in this calculation, whereas
@@ -91,6 +99,23 @@ for (mouse_id in mouse_ids) {
 
     # ----------------------------------------------------------------------
     # Preprocess data
+
+    # Merge exon lengths. This is important if you are computing the rpkm from the dataset, which
+    # is how the old pipeline did it, but this may be deprecated in the future when we require a RPKM file
+    if (merge_rpkms==FALSE) {
+        mat_reads = merge(
+            mat_reads, mat_exon_lengths[c('gene_name', 'exon_length')],  # do we need 'gene_id'?
+            by='gene_name', suffixes=c('', '_'),
+            all.x=TRUE, all.y=FALSE
+            # na_matches = 'never'  # do not include null values
+        )
+        pat_reads = merge(
+            pat_reads, pat_exon_lengths[c('gene_name', 'exon_length')],  # do we need 'gene_id'?
+            by='gene_name', suffixes=c('', '_'),
+            all.x=TRUE, all.y=FALSE
+            # na_matches = 'never'  # do not include null values
+        )
+    }
 
     # merge
     all_reads = merge(
@@ -117,7 +142,7 @@ for (mouse_id in mouse_ids) {
 
     # reindex columns
     index_cols = c('mouse_id', 'gene_name',
-                   'gene_id_mat', 'chromosome_mat', 'gene_id_pat', 'chromosome_pat')
+                   gene_id_cols[0], 'chromosome_mat', gene_id_cols[1], 'chromosome_pat')
     value_cols = items_in_a_not_b(colnames(all_reads), index_cols)
     all_reads <- all_reads[, c(index_cols, value_cols)]
 
@@ -135,16 +160,6 @@ for (mouse_id in mouse_ids) {
     all_reads <- all_reads[all_reads['chromosome_mat']!='Y',]
 
 
-    # select on genes only available both gtf files
-    # should we really have this?
-    if (keep_shared_genes) {
-        all_reads <- reset_index(all_reads)
-        rownames(all_reads) <- all_reads[, 'gene_name']
-        all_reads <- (all_reads[intersect(all_reads[, 'gene_name'], shared_genes),])  # filter genes shared by both gtf files
-        rownames(all_reads) <- all_reads[, 'index']  # optional preserve index for troubleshooting
-    }
-
-
     # Compute SRPM (allele-specific SNP-containing exonic reads per 10 million uniquely mapped reads)
     # This requires a-priori knowledge of how many reads
     total_num_reads = run_metadata[run_metadata['mouse_id']==mouse_id, 'total_num_reads']
@@ -152,18 +167,32 @@ for (mouse_id in mouse_ids) {
     all_reads['mean_srpm'] = rowMeans(all_reads[c('srpm_mat', 'srpm_pat')])
 
 
-    # Compute RPKM (reads per kilobase of exon per million reads mapped)
-    # this needs to be brought in a priori, because these are the reads that ONLY align to the SNPs, and
-    # the computation needs to be done on all mapped reads, not just the ones that align to SNPs
-    if (compute_rpkm) {
+    # Either merge RPKMs (good) or compute them from the data (bad)
+    # RPKM (reads per kilobase of exon per million reads mapped)
+    if (merge_rpkms) {
 
-        # this differs from Zach's pipeline, which just uses the sum of the reads instead of total_num_reads
+        rpkms_file = rpkms_filepaths[grep(mouse_id, basename(rpkms_filepaths))]
+        rpkms = read.csv(rpkms_file, header=TRUE, sep=',', check.names=FALSE)
+        all_reads = merge(
+            all_reads, rpkms[c('gene_name', 'rpkm')],
+            by='gene_name', suffixes=c('', '_'),
+            all.x=TRUE, all.y=FALSE
+            # na_matches = 'never'  # do not include null values
+        )
+
+    } else {
+
+        # This is how the old pipeline worked, but this is actually wrong
+        # The RPKM actually has to be computed a priori
+        # I'm keeping this here so we can compare, but this should eventually be deprecated
+        # Also, in Zach's version, colSums is used to calculate the total_num_reads, which is wrong
         all_reads['rpm_mat'] = all_reads['num_reads_mat'] / total_num_reads * 1e6
         all_reads['rpm_pat'] = all_reads['num_reads_pat'] / total_num_reads * 1e6
 
         all_reads['rpkm_mat'] = all_reads['rpm_mat'] / all_reads["exon_length_mat"] * 1000
         all_reads['rpkm_pat'] = all_reads['rpm_pat'] / coalesce1(all_reads["exon_length_pat"], all_reads["exon_length_mat"]) * 1000
-        all_reads['mean_rpkm'] = rowMeans(all_reads[c('rpkm_mat', 'rpkm_pat')])
+        all_reads['rpkm'] = rowMeans(all_reads[c('rpkm_mat', 'rpkm_pat')])  # this is where things could go wonky
+    
     }
 
 
@@ -194,19 +223,21 @@ for (mouse_id in mouse_ids) {
         sqrt(corrected_pct_xi *(1-corrected_pct_xi )/total_reads))
     x_reads[is.na(x_reads[, 'upper_confidence_interval']), 'upper_confidence_interval'] <- 0  # fillna with 0
 
-    # the numbers are close, not an exact match, but it could just be rounding errors on their part
+    # the numbers are VERY close, but not an exact match
+    # maybe it could just be rounding errors on their part
+
 
     # ----------------------------------------------------------------------
     # Filters
 
-    x_reads['mean_rpkm_gt_1'] <- as.integer(x_reads['mean_rpkm'] > 1)
-    x_reads[is.na(x_reads['mean_rpkm_gt_1']), 'mean_rpkm_gt_1'] <- 0
+    x_reads['rpkm_gt_1'] <- as.integer(x_reads['rpkm'] > 1)
+    x_reads[is.na(x_reads['rpkm_gt_1']), 'rpkm_gt_1'] <- 0
 
     x_reads['xi_srpm_gte_2'] <- as.integer(x_reads['srpm_pat'] >= 2)
     x_reads[is.na(x_reads['xi_srpm_gte_2']), 'xi_srpm_gte_2'] <- 0
 
     filtered_data = x_reads[
-        (x_reads['mean_rpkm_gt_1'] != 0)
+        (x_reads['rpkm_gt_1'] != 0)
         & (x_reads['xi_srpm_gte_2'] == 1),
     ]
 
@@ -230,12 +261,12 @@ for (mouse_id in mouse_ids) {
 
         subset_cols = c(
             'mouse_id', 
-            # 'chromosome_mat', 'chromosome_pat', 'gene_id_mat', 'gene_id_pat',
+            # 'chromosome_mat', 'chromosome_pat', gene_id_cols[0], gene_id_cols[1],
             # 'exon_length_mat', 'exon_length_pat',
             'gene_name', "locus_mat", 'num_reads_mat', 'num_reads_pat',
             'lower_confidence_interval', 'upper_confidence_interval',
             'srpm_mat', 'srpm_pat',
-            'mean_rpkm' # 'mean_rpkm_gt_1'
+            'rpkm' # 'rpkm_gt_1'
         )
 
         write.table(
