@@ -10,6 +10,7 @@
 # # pivot
 # # join_many_csv
 # # append_many_csv
+# # coalesce1
 
 
 # ----------------------------------------------------------------------
@@ -180,4 +181,15 @@ append_many_csv <- function(dir_path, sep='\t', row_names=1) {
     csv <- lapply(filenames, read.csv, sep=sep, row.names=row_names)
     data <- do.call(rbind, csv)
     return(data)
+}
+
+
+#' See: https://stackoverflow.com/questions/19253820/how-to-implement-coalesce-efficiently-in-r
+coalesce1 <- function(...) {
+    ans <- ..1
+    for (elt in list(...)[-1]) {
+        i <- is.na(ans)
+        ans[i] <- elt[i]
+    }
+    ans
 }

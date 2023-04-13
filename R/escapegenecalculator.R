@@ -5,14 +5,24 @@ library(logr)
 wd = dirname(this.path::here())  # wd = '~/github/R/escapegenecalculator'
 source(file.path(wd, 'R', 'utils.R'))
 save=TRUE  # useful for troubleshooting
+keep_shared_genes=FALSE  # select on genes only available both gtf files
+compute_rpkm=TRUE  # troubleshooting
 
 
 # Input parameters
-data_dir = file.path(wd, 'data')
-raw_dir = file.path(data_dir, 'read_counts', 'raw_read_counts')
-out_dir = file.path(wd, 'data', 'output')
+in_dir = file.path(wd, 'data')
+raw_dir = file.path(in_dir, 'read_counts')
 run_metadata_filename = 'run_metadata.csv'
+out_dir = file.path(wd, 'data')
 
+# select on genes only available both gtf files
+# should we really have this?
+if (keep_shared_genes) {
+    ref_dir = file.path(wd, "data", "ref")
+    mat_exon_lengths_filepath = file.path(ref_dir, "exon_lengths-Mus_musculus.csv")
+    pat_exon_lengths_filepath = file.path(ref_dir, "exon_lengths-Mus_spretus.csv")
+    # Other: "exon_lengths-Mus_musculus_casteij.csv"
+}
 
 # Provide a z-score to be used in the confidence interval.
 zscore <- qnorm(0.99)  # was 0.975 in Zach's version, but Berletch's paper requires 0.99
@@ -23,8 +33,9 @@ start_time = Sys.time()
 log <- log_open(paste("escapegenecalculator ", start_time, '.log', sep=''))
 log_print(paste('Start ', start_time))
 if (save) {
-    log_print(paste('input dir: ', file.path(data_dir)))
+    log_print(paste('input dir: ', file.path(in_dir)))
     log_print(paste('output dir: ', file.path(out_dir)))
+    log_print(paste('keep_shared_genes: ', keep_shared_genes))
 } else {
     log_print(paste('save: ', save))
 }
@@ -35,7 +46,16 @@ if (save) {
 
 
 # Need the total_num_reads a priori
-run_metadata <- read.csv(file.path(data_dir, run_metadata_filename), header=TRUE, sep=',', check.names=FALSE)
+run_metadata <- read.csv(file.path(in_dir, run_metadata_filename), header=TRUE, sep=',', check.names=FALSE)
+
+
+# select on genes only available both gtf files
+# should we really have this?
+if (keep_shared_genes) {
+    mat_exon_lengths <- read.csv(mat_exon_lengths_filepath, na.string="NA", stringsAsFactors=FALSE,)
+    pat_exon_lengths <- read.csv(pat_exon_lengths_filepath, na.string="NA", stringsAsFactors=FALSE,)
+    shared_genes = intersect(mat_exon_lengths[, 'gene_name'], pat_exon_lengths[, 'gene_name'])
+}
 
 
 filepaths <- list_files(raw_dir, ext='csv', recursive=TRUE)
@@ -51,16 +71,27 @@ for (mouse_id in mouse_ids) {
 
     log_print(paste('Processing', basename(mat_file), basename(pat_file), '...'))
 
-
-    # ----------------------------------------------------------------------
-    # Read and preprocess data
-
-
     mat_reads = read.csv(mat_file, header=TRUE, sep=',', check.names=FALSE)
     # mat_reads['metadata'] = c(tools::file_path_sans_ext(basename(mat_file)))
     pat_reads = read.csv(pat_file, header=TRUE, sep=',', check.names=FALSE)
     # pat_reads['metadata'] = c(tools::file_path_sans_ext(basename(pat_file)))
-    
+
+
+    # Calculate bias based on autosomal reads only. Should be pretty close to 1 if this is done right
+    # In Zach's pipeline, the X chromosome is included in this calculation, whereas
+    # Berletch specifies that this needs to be computed on the autosomal reads only
+    num_autosomal_reads_mat = sum(
+        mat_reads[(mat_reads['chromosome']!='X') & (mat_reads['chromosome']!='Y'), 'count'])
+    num_autosomal_reads_pat = sum(
+        pat_reads[(pat_reads['chromosome']!='X') & (pat_reads['chromosome']!='Y'), 'count'])
+    bias_xi_div_xa <- num_autosomal_reads_pat/num_autosomal_reads_mat
+
+    log_print(paste('Bias:', bias_xi_div_xa))
+
+
+    # ----------------------------------------------------------------------
+    # Preprocess data
+
     # merge
     all_reads = merge(
         mat_reads[(mat_reads['gene_name']!=''), ],
@@ -70,8 +101,6 @@ for (mouse_id in mouse_ids) {
         na_matches = 'never'
     )  # we don't care about genes that don't have gene names, apparently
     
-    all_reads['mouse_id'] <- mouse_id
-
     # rename columns
     colnames(all_reads) <- lapply(
       colnames(all_reads),
@@ -83,30 +112,37 @@ for (mouse_id in mouse_ids) {
         return (step4)}
     )
 
+    all_reads['mouse_id'] <- mouse_id
+    all_reads['bias_xi_div_xa'] <- bias_xi_div_xa
+
     # reindex columns
     index_cols = c('mouse_id', 'gene_name',
                    'gene_id_mat', 'chromosome_mat', 'gene_id_pat', 'chromosome_pat')
     value_cols = items_in_a_not_b(colnames(all_reads), index_cols)
     all_reads <- all_reads[, c(index_cols, value_cols)]
 
-    # filter duplicates on maternal
-    # note: there are still duplicates on paternal, but that might be ok
-    all_reads <- all_reads[!duplicated(all_reads[, c('gene_id_mat', 'chromosome_mat')]),]
-    all_reads <- all_reads[all_reads['chromosome_mat']!='Y',]  # filter Y chromosome, there shouldn't be any anyway
+
+    # ----------------------------------------------------------------------
+    # Filter data
+
+    # Duplicates
+    # Not sure when this would be relevant. The potential for this to break the pipeline is too high.
+    # We need to disable this for the Berletch dataset, because this filters out all genes with a NULL gene_id
+    # all_reads <- all_reads[!duplicated(all_reads[, c('gene_id_mat', 'chromosome_mat')]),]
     # all_reads <- dplyr::distinct(all_reads)  # this doesn't actually do anything for this dataset
 
+    # filter Y chromosome, all the reads here should be 0 anyway
+    all_reads <- all_reads[all_reads['chromosome_mat']!='Y',]
 
-    # Compute RPM (reads per million)
-    all_reads[c('rpm_mat', 'rpm_pat')] = sweep(
-        all_reads[c('num_reads_mat', 'num_reads_pat')], 2,
-        colSums(all_reads[c('num_reads_mat', 'num_reads_pat')]), `/`
-    ) * 1e6
 
-    # Compute RPKM (reads per kilobase of exon per million reads mapped)
-    # not sure why this differs so much, but it's not important for this analysis
-    all_reads['rpkm_mat'] = all_reads['rpm_mat'] / all_reads["exon_length_mat"] * 1000
-    all_reads['rpkm_pat'] = all_reads['rpm_pat'] / coalesce1(all_reads["exon_length_pat"], all_reads["exon_length_mat"]) * 1000
-    all_reads['mean_rpkm'] = rowMeans(all_reads[c('rpkm_mat', 'rpkm_pat')])
+    # select on genes only available both gtf files
+    # should we really have this?
+    if (keep_shared_genes) {
+        all_reads <- reset_index(all_reads)
+        rownames(all_reads) <- all_reads[, 'gene_name']
+        all_reads <- (all_reads[intersect(all_reads[, 'gene_name'], shared_genes),])  # filter genes shared by both gtf files
+        rownames(all_reads) <- all_reads[, 'index']  # optional preserve index for troubleshooting
+    }
 
 
     # Compute SRPM (allele-specific SNP-containing exonic reads per 10 million uniquely mapped reads)
@@ -116,17 +152,25 @@ for (mouse_id in mouse_ids) {
     all_reads['mean_srpm'] = rowMeans(all_reads[c('srpm_mat', 'srpm_pat')])
 
 
+    # Compute RPKM (reads per kilobase of exon per million reads mapped)
+    # this needs to be brought in a priori, because these are the reads that ONLY align to the SNPs, and
+    # the computation needs to be done on all mapped reads, not just the ones that align to SNPs
+    if (compute_rpkm) {
+
+        # this differs from Zach's pipeline, which just uses the sum of the reads instead of total_num_reads
+        all_reads['rpm_mat'] = all_reads['num_reads_mat'] / total_num_reads * 1e6
+        all_reads['rpm_pat'] = all_reads['num_reads_pat'] / total_num_reads * 1e6
+
+        all_reads['rpkm_mat'] = all_reads['rpm_mat'] / all_reads["exon_length_mat"] * 1000
+        all_reads['rpkm_pat'] = all_reads['rpm_pat'] / coalesce1(all_reads["exon_length_pat"], all_reads["exon_length_mat"]) * 1000
+        all_reads['mean_rpkm'] = rowMeans(all_reads[c('rpkm_mat', 'rpkm_pat')])
+    }
+
+
     # ----------------------------------------------------------------------
     # Compute confidence intervals from binomial model
 
-    log_print('Computing confidence intervals...')
-
-    # Calculate bias based on autosomal reads only. Should be pretty close to 1 if this is done right
-    num_autosomal_reads_mat = sum(
-        mat_reads[(mat_reads['chromosome']!='X') & (mat_reads['chromosome']!='Y'), 'count'])
-    num_autosomal_reads_pat = sum(
-        pat_reads[(pat_reads['chromosome']!='X') & (pat_reads['chromosome']!='Y'), 'count'])
-    bias_xi_div_xa <- num_autosomal_reads_pat/num_autosomal_reads_mat
+    # log_print('Computing confidence intervals...')
 
     # subset for downstream analysis
     x_reads <- all_reads[all_reads['chromosome_mat']=='X',]
@@ -151,7 +195,6 @@ for (mouse_id in mouse_ids) {
     x_reads[is.na(x_reads[, 'upper_confidence_interval']), 'upper_confidence_interval'] <- 0  # fillna with 0
 
     # the numbers are close, not an exact match, but it could just be rounding errors on their part
-    
 
     # ----------------------------------------------------------------------
     # Filters
@@ -167,13 +210,12 @@ for (mouse_id in mouse_ids) {
         & (x_reads['xi_srpm_gte_2'] == 1),
     ]
 
-
     # ----------------------------------------------------------------------
     # Save
 
     # save data
     if (save) {
-        log_print("Writing data...")
+        # log_print("Writing data...")
 
         if (!dir.exists(out_dir)) {
             dir.create(out_dir)
@@ -193,9 +235,9 @@ for (mouse_id in mouse_ids) {
             'gene_name', "locus_mat", 'num_reads_mat', 'num_reads_pat',
             'lower_confidence_interval', 'upper_confidence_interval',
             'srpm_mat', 'srpm_pat',
-            'mean_rpkm', 'mean_rpkm_gt_1'
-
+            'mean_rpkm' # 'mean_rpkm_gt_1'
         )
+
         write.table(
             filtered_data[subset_cols],
             file = file.path(out_dir, paste('escape_genes-', mouse_id, '.csv', sep='')),
