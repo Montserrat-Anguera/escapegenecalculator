@@ -19,7 +19,7 @@ option_list = list(
     make_option(c("-x", "--ext"), default="csv", metavar="csv",
                 type="character", help="choose 'csv' or 'tsv'"),
 
-    make_option(c("-e", "--estimate-total-reads"), default=TRUE, action="store_false", metavar="TRUE",
+    make_option(c("-e", "--estimate-total-reads"), default=FALSE, action="store_true", metavar="TRUE",
                 type="logical", help="in case num_total_reads is unavailable, use this to estimate the num_total_reads"),
     
     make_option(c("-m", "--merge-rpkms"), default=TRUE, action="store_false", metavar="FALSE",
@@ -42,7 +42,7 @@ opt = parse_args(opt_parser)
 # opt <- list(
 #     "input-data" = "data", 
 #     "ext" = "csv",
-#     "estimate-total-reads" = TRUE,
+#     "estimate-total-reads" = FALSE,
 #     "merge-rpkms" = TRUE,
 #     "keep-shared-genes" = FALSE,
 #     "zscore" = 0.99,
@@ -248,8 +248,6 @@ for (mouse_id in mouse_ids) {
     }
     all_reads['num_total_reads'] = num_total_reads
     all_reads['ratio_xi_over_xa'] = all_reads['num_reads_pat'] / all_reads['num_reads_mat']
-
-    log_print(paste(Sys.time(), 'Num total reads:', num_total_reads))
 
 
     # Compute SRPM (allele-specific SNP-containing exonic reads per 10 million uniquely mapped reads)

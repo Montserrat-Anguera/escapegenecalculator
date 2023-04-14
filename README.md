@@ -71,17 +71,23 @@ Check the README files for what to download for each folder.
 
 ## Use
 
-Run the following from command line:
+To run the new pipeline:
+
+```bash
+cd path/to/escapegenecalculator
+Rscript R/escapegenecalculator.R
+```
+
+
+
+To run the old pipeline:
 
 ```bash
 cd path/to/escapegenecalculator
 
-# generate metadata files for use downstream
-Rscript R/calculate_exon_lengths.R  # ~1 minute, required
-Rscript R/extract_chromosome_lengths.R  # ~5 minutes, optional
-
-# New pipeline
-Rscript R/escapegenecalculator.R
+# Optional, since the output of these have already been generated for you
+Rscript R/calculate_exon_lengths.R  # ~1 minute
+Rscript R/extract_chromosome_lengths.R  # ~5 minutes
 
 # Zach's pipeline (to be deprecated)
 Rscript R/merge_read_counts.R
