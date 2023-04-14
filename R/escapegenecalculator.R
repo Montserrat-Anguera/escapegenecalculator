@@ -20,9 +20,9 @@ option_list = list(
                 type="character", help="choose 'csv' or 'tsv'"),
 
     make_option(c("-e", "--estimate-total-reads"), default=TRUE, action="store_false", metavar="TRUE",
-                type="logical", help="in case total_num_reads is unavailable, use this to estimate the total_num_reads"),
+                type="logical", help="in case num_total_reads is unavailable, use this to estimate the num_total_reads"),
     
-    make_option(c("-m", "--merge-rpkms"), default=FALSE, action="store_true", metavar="FALSE",
+    make_option(c("-m", "--merge-rpkms"), default=TRUE, action="store_false", metavar="FALSE",
                 type="logical", help="old pipeline computed RPKM instead of bringing it in"),
 
     make_option(c("-k", "--keep-shared-genes"), default=FALSE, action="store_true", metavar="FALSE",
@@ -38,24 +38,34 @@ option_list = list(
 opt_parser = OptionParser(option_list=option_list)
 opt = parse_args(opt_parser)
 
+# for troubleshooting
+# opt <- list(
+#     "input-data" = "data", 
+#     "ext" = "csv",
+#     "estimate-total-reads" = TRUE,
+#     "merge-rpkms" = TRUE,
+#     "keep-shared-genes" = FALSE,
+#     "zscore" = 0.99,
+#     "save" = TRUE
+# )
 
 # optional commands
 gene_id_col='gene_id'  # could use 'locus' for Disteche's data
 run_metadata_filename = 'run_metadata.csv'
 
-# in case total_num_reads is unavailable, use this to estimate the total_num_reads
+# in case num_total_reads is unavailable, use this to estimate the num_total_reads
 # In Berletch's 2015 paper, they got 9258991 snp-specific reads from 88842032 total reads
 estimated_pct_snp_reads=0.104  # 9258991/88842032
 
 
 # for readability downstream
-in_dir = file.path(wd, opt['input-data'])
-file_ext=opt['ext']
-save<-opt['save'] 
-estimate_total_reads=opt["estimate-total-reads"]
-merge_rpkms=opt['merge-rpkms']
+in_dir = file.path(wd, opt['input-data'][[1]])
+file_ext=opt['ext'][[1]]
+save<-opt['save'][[1]]
+estimate_total_reads=opt["estimate-total-reads"][[1]]
+merge_rpkms=opt['merge-rpkms'][[1]]
 keep_shared_genes=FALSE # opt['keep-shared-genes']
-zscore=opt['zscore']
+zscore=opt['zscore'][[1]]
 
 
 # ----------------------------------------------------------------------
@@ -87,11 +97,9 @@ if (!file.exists(metadata_file)) {
 
 # select on genes only available both gtf files
 # not implemented
-if (keep_shared_genes==TRUE | merge_rpkms==FALSE) {
-    mat_exon_lengths_filepath = file.path(ref_dir, "exon_lengths-Mus_musculus.csv")
-    pat_exon_lengths_filepath = file.path(ref_dir, "exon_lengths-Mus_musculus_casteij.csv")
-    # Other: "exon_lengths-Mus_musculus_spretus.csv"
-}
+mat_exon_lengths_filepath = file.path(ref_dir, "exon_lengths-Mus_musculus.csv")
+pat_exon_lengths_filepath = file.path(ref_dir, "exon_lengths-Mus_musculus_casteij.csv")
+
 
 # Start Log
 start_time = Sys.time()
@@ -110,17 +118,17 @@ if (save==TRUE) {
 # ----------------------------------------------------------------------
 # Bring in metadata
 
-# Need the total_num_reads a priori
+# Need the num_total_reads a priori
 metadata_file = file.path(in_dir, run_metadata_filename)
 if (file.exists(metadata_file)) {
     run_metadata <- read.csv(metadata_file, header=TRUE, sep=',', check.names=FALSE)
 }
 
 # Only need this if we're computing the RPKMs from the data here
-if (keep_shared_genes | merge_rpkms==FALSE) {
-    mat_exon_lengths <- read.csv(mat_exon_lengths_filepath, na.string="NA", stringsAsFactors=FALSE,)
-    pat_exon_lengths <- read.csv(pat_exon_lengths_filepath, na.string="NA", stringsAsFactors=FALSE,)
+mat_exon_lengths <- read.csv(mat_exon_lengths_filepath, na.string="NA", stringsAsFactors=FALSE,)
+pat_exon_lengths <- read.csv(pat_exon_lengths_filepath, na.string="NA", stringsAsFactors=FALSE,)
 
+if (keep_shared_genes==TRUE) {
     # this was implemented in the old pipeline not currently implemented
     # I think it's bad practice to only look at genes that are found in these gtf files
     shared_genes = intersect(mat_exon_lengths[, 'gene_name'], pat_exon_lengths[, 'gene_name'])
@@ -173,23 +181,20 @@ for (mouse_id in mouse_ids) {
     # ----------------------------------------------------------------------
     # Preprocess data
 
-    # Merge exon lengths. This is important if you are computing the rpkm from the dataset, which
-    # is how the old pipeline did it, but this may be deprecated in the future when we require a RPKM file
-    if (merge_rpkms==FALSE) {
-        mat_reads = merge(
-            mat_reads, mat_exon_lengths[c('gene_name', 'exon_length')],  # do we need 'gene_id'?
-            by='gene_name', suffixes=c('', '_'),
-            all.x=TRUE, all.y=FALSE
-            # na_matches = 'never'  # do not include null values
-        )
-        pat_reads = merge(
-            pat_reads, pat_exon_lengths[c('gene_name', 'exon_length')],  # do we need 'gene_id'?
-            by='gene_name', suffixes=c('', '_'),
-            all.x=TRUE, all.y=FALSE
-            # na_matches = 'never'  # do not include null values
-        )
-    }
-
+    # Merge exon lengths
+    mat_reads = merge(
+        mat_reads, mat_exon_lengths[c('gene_name', 'exon_length')],  # do we need 'gene_id'?
+        by='gene_name', suffixes=c('', '_'),
+        all.x=TRUE, all.y=FALSE
+        # na_matches = 'never'  # do not include null values
+    )
+    pat_reads = merge(
+        pat_reads, pat_exon_lengths[c('gene_name', 'exon_length')],  # do we need 'gene_id'?
+        by='gene_name', suffixes=c('', '_'),
+        all.x=TRUE, all.y=FALSE
+        # na_matches = 'never'  # do not include null values
+    )
+    
     # merge
     all_reads = merge(
         mat_reads[(mat_reads['gene_name']!=''), ],
@@ -234,28 +239,31 @@ for (mouse_id in mouse_ids) {
     # filter Y chromosome, all the reads here should be 0 anyway
     all_reads <- all_reads[all_reads['chromosome_mat']!='Y',]
 
-    # Estimate total_num_reads, if necessary
+    # Estimate num_total_reads, if necessary
     if (estimate_total_reads==TRUE) {
-        total_num_reads = num_snp_reads / estimated_pct_snp_reads
+        num_total_reads = num_snp_reads / estimated_pct_snp_reads
     } else {
         run_metadata <- read.csv(metadata_file, header=TRUE, sep=',', check.names=FALSE)
-        total_num_reads = run_metadata[run_metadata['mouse_id']==mouse_id, 'total_num_reads']
+        num_total_reads = run_metadata[run_metadata['mouse_id']==mouse_id, 'num_total_reads']
     }
-    all_reads['total_num_reads'] = total_num_reads
+    all_reads['num_total_reads'] = num_total_reads
     all_reads['ratio_xi_over_xa'] = all_reads['num_reads_pat'] / all_reads['num_reads_mat']
 
-    log_print(paste(Sys.time(), 'Total num reads:', total_num_reads))
+    log_print(paste(Sys.time(), 'Num total reads:', num_total_reads))
+
 
     # Compute SRPM (allele-specific SNP-containing exonic reads per 10 million uniquely mapped reads)
     # This requires a-priori knowledge of how many reads
-    all_reads[c('srpm_mat', 'srpm_pat')] = all_reads[c('num_reads_mat', 'num_reads_pat')] / total_num_reads * 1e7
-    # all_reads['mean_srpm'] = rowMeans(all_reads[c('srpm_mat', 'srpm_pat')])  # not used
+    all_reads[c('srpm_mat', 'srpm_pat')] = all_reads[c('num_reads_mat', 'num_reads_pat')] / num_total_reads * 1e7
+
 
     # Either merge RPKMs (good) or compute them from the data (bad)
     # RPKM (reads per kilobase of exon per million reads mapped)
     if (merge_rpkms==TRUE) {
+
         rpkms_file = rpkms_filepaths[grep(mouse_id, basename(rpkms_filepaths))]
         rpkms = read.csv(rpkms_file, header=TRUE, sep=',', check.names=FALSE)
+
         all_reads = merge(
             all_reads, rpkms[c('gene_name', 'rpkm')],
             by='gene_name', suffixes=c('', '_'),
@@ -269,15 +277,10 @@ for (mouse_id in mouse_ids) {
         # The RPKM actually has to be computed a priori
         # I'm keeping this here so we can compare, but this should eventually be deprecated
 
-        # Rescaling to account for the fact that we're only using SNP-specific reads
-        # Note that if you use the estimated_pct_snp_reads to estimate the total_num_reads, then
-        # the RPKM calculated becomes independent the estimated_pct_snp_reads
-        pct_snp_reads = num_snp_reads / total_num_reads
-
-        # In an attempt to scale up the RPKM number, I had a version where I normalized by pct_snp_reads
-        # After thinking about it, this pct_snp_reads is already baked into the total_num_reads number
-        all_reads['rpm_mat'] = all_reads['num_reads_mat'] / total_num_reads * 1e6 # / pct_snp_reads
-        all_reads['rpm_pat'] = all_reads['num_reads_pat'] / total_num_reads * 1e6 # / pct_snp_reads
+        # the old pipeline had num_snp_reads, the new one has num_total_reads
+        # if we're estimating, num_total_reads = num_snp_reads / estimated_pct_snp_reads
+        all_reads['rpm_mat'] = all_reads['num_reads_mat'] / num_total_reads * 1e6
+        all_reads['rpm_pat'] = all_reads['num_reads_pat'] / num_total_reads * 1e6
 
         exon_lengths = coalesce1(all_reads["exon_length_mat"], all_reads["exon_length_pat"])
         all_reads['rpkm_mat'] = all_reads['rpm_mat'] / exon_lengths * 1000
@@ -328,11 +331,11 @@ for (mouse_id in mouse_ids) {
 
     x_reads['lower_ci_gt_0'] <- as.integer(x_reads['lower_confidence_interval'] > 0)
 
-    filtered_x_reads = x_reads[
-        (x_reads['rpkm_gt_1'] != 0) &
-        (x_reads['xi_srpm_gte_2'] == 1) &
-        (x_reads['lower_ci_gt_0'] == 1),
-    ]
+    # filtered_x_reads = x_reads[
+    #     (x_reads['rpkm_gt_1'] != 0) &
+    #     (x_reads['xi_srpm_gte_2'] == 1) &
+    #     (x_reads['lower_ci_gt_0'] == 1),
+    # ]
 
     # ----------------------------------------------------------------------
     # Save
@@ -350,7 +353,7 @@ for (mouse_id in mouse_ids) {
         }
 
         write.table(
-            x_reads[x_read_output_cols],
+            x_reads[intersect(x_read_output_cols, colnames(x_reads))],
             file = file.path(out_dir, 'x_reads', paste('x_reads-', mouse_id, '.csv', sep='')),
             row.names = FALSE,
             sep = ','
@@ -362,9 +365,16 @@ for (mouse_id in mouse_ids) {
         if (!dir.exists(file.path(out_dir, 'escape_genes'))) {
             dir.create(file.path(out_dir, 'escape_genes'))
         }
-        escape_genes = filtered_x_reads[, escape_gene_cols]
+
+        escape_genes = x_reads[
+            (x_reads['rpkm_gt_1'] != 0) &
+            (x_reads['xi_srpm_gte_2'] == 1) &
+            (x_reads['lower_ci_gt_0'] == 1),
+        ]
+
         write.table(
-            escape_genes[order(escape_genes[, 'rpkm'], decreasing=TRUE), ],
+            escape_genes[order(escape_genes[, 'rpkm'], decreasing=TRUE),
+                         intersect(escape_gene_cols, colnames(x_reads))],
             file = file.path(out_dir, 'escape_genes', paste('escape_genes-', mouse_id, '.csv', sep='')),
             row.names = FALSE,
             sep = ','

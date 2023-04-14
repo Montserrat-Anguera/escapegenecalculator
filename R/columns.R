@@ -12,22 +12,23 @@ x_read_output_cols = c(
     # 'chromosome_pat',  # always X in this format
     # 'locus_mat',  # came with Berletch's data
     # 'locus_pat',  # came with Berletch's data
-    'total_num_reads',
+    'num_total_reads',
     'bias_xi_div_xa',
     'gene_id_mat',
     'gene_id_pat',
-    'exon_length_mat',
-    'exon_length_pat',
+    'exon_length_mat',  # required now
+    'exon_length_pat',  # required now
     'gene_name',
     'num_reads_mat',
     'num_reads_pat',
+    'ratio_xi_over_xa',
     # 'total_reads',  # this was an intermediate for calculation only
     'srpm_mat',
     'srpm_pat',
     # 'rpm_mat',  # don't need this
     # 'rpm_pat',  # don't need this
-    'rpkm_mat',
-    'rpkm_pat',
+    'rpkm_mat',  # not present if RPKMs are merged
+    'rpkm_pat',  # not present if RPKMs are merged
     'rpkm',
     'pct_xi',
     'corrected_pct_xi',
