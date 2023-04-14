@@ -33,7 +33,7 @@ option_list = list(
     make_option(c("-k", "--keep-shared-genes"), default=FALSE, action="store_true", metavar="FALSE",
                 type="logical", help="select only genes available both gtf files. does nothing for now"),
 
-    make_option(c("-z", "--zscore"), default=0.99, metavar="0.99",
+    make_option(c("-z", "--zscore-threshold"), default=0.99, metavar="0.99",
                 type="double", help="was 0.975 in Zach's version, but Berletch's paper requires 0.99"),
 
     make_option(c("-s", "--save"), default=TRUE, action="store_false", metavar="TRUE",
@@ -85,7 +85,7 @@ save = opt['save'][[1]]
 estimate_total_reads = opt["estimate-total-reads"][[1]]
 merge_rpkms = opt['merge-rpkms'][[1]]
 keep_shared_genes = FALSE # opt['keep-shared-genes']
-zscore = opt['zscore'][[1]]
+zscore = qnorm(opt['zscore'][[1]])
 
 
 read_counts_dir = file.path(in_dir, 'read_counts')

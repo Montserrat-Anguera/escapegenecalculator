@@ -20,7 +20,7 @@ option_list = list(
     make_option(c("-s", "--save"), default=TRUE, action="store_false", metavar="TRUE",
                 type="logical", help="disable if you're troubleshooting and don't want to overwrite your files"),
     
-    make_option(c("-z", "--zscore"), default=0.975, metavar="0.975",
+    make_option(c("-z", "--zscore-threshold"), default=0.975, metavar="0.975",
                 type="double", help="was 0.975 in Zach's version, but Berletch's paper requires 0.99")
 
 )
@@ -45,7 +45,7 @@ opt = parse_args(opt_parser)
 in_dir = file.path(wd, opt['input-data'][[1]])
 out_dir = file.path(in_dir, opt['output-dir'][[1]])
 save = opt['save'][[1]]
-zscore = opt['zscore'][[1]]
+zscore = qnorm(opt['zscore-threshold'][[1]])
 
 # can change this in the future
 x_reads_wide_file = file.path(out_dir, 'reads', 'reads_x_only.csv')
