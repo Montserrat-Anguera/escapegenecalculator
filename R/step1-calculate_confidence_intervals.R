@@ -21,7 +21,7 @@ option_list = list(
                 type="logical", help="disable if you're troubleshooting and don't want to overwrite your files"),
     
     make_option(c("-z", "--zscore-threshold"), default=0.975, metavar="0.975",
-                type="double", help="was 0.975 in Zach's version, but Berletch's paper requires 0.99")
+                type="double", help="was 0.975 in Zack's version, but Berletch's paper requires 0.99")
 
 )
 opt_parser = OptionParser(option_list=option_list)

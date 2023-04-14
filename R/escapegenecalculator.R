@@ -34,7 +34,7 @@ option_list = list(
                 type="logical", help="select only genes available both gtf files. does nothing for now"),
 
     make_option(c("-z", "--zscore-threshold"), default=0.99, metavar="0.99",
-                type="double", help="was 0.975 in Zach's version, but Berletch's paper requires 0.99"),
+                type="double", help="was 0.975 in Zack's version, but Berletch's paper requires 0.99"),
 
     make_option(c("-p", "--pat-exon-lengths-filename"), default="exon_lengths-Mus_musculus_casteij.csv",
                   metavar="exon_lengths-Mus_musculus_casteij.csv",
@@ -186,7 +186,7 @@ for (mouse_id in mouse_ids) {
     pat_reads = read.csv(pat_file, header=TRUE, sep=sep, check.names=FALSE)
 
     # Calculate bias based on autosomal reads only. Should be pretty close to 1 if this is done right
-    # In Zach's pipeline, the X chromosome is included in this calculation, whereas
+    # In Zack's pipeline, the X chromosome is included in this calculation, whereas
     # Berletch specifies that this needs to be computed on the autosomal reads only
     num_snp_reads = sum(mat_reads[, 'count']) + sum(pat_reads[, 'count'])
     num_autosomal_reads_mat = sum(
