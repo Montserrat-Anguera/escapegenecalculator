@@ -46,6 +46,7 @@ install.packages("seqinr")
 install.packages("logr")
 install.packages("data.table")
 install.packages("this.path")  # See: https://github.com/ArcadeAntics/this.path
+install.packages("optparse")
 # install.packages("dplyr")  # eliminated this as a dependency
 
 install.packages("BiocManager")

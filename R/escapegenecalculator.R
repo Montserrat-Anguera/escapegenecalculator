@@ -3,30 +3,59 @@
 ## normalizes, computes confidence intervals, then outputs a list of escape genes.
 
 
-library(logr)
+library('optparse')
+library('logr')
 wd = dirname(this.path::here())  # wd = '~/github/R/escapegenecalculator'
 source(file.path(wd, 'R', 'columns.R'))
 source(file.path(wd, 'R', 'utils.R'))
 
 
-# options
-save=TRUE  # useful for troubleshooting
-keep_shared_genes=FALSE  # select on genes only available both gtf files. this is not implemented for now.
-merge_rpkms=FALSE  # old pipeline computed RPKM instead of bringing it in
-gene_id_col='gene_id'  # use 'locus' for Disteche's data
+# args
+option_list = list(
 
-# Provide a z-score to be used in the confidence interval.
-zscore <- qnorm(0.99)  # was 0.975 in Zach's version, but Berletch's paper requires 0.99
+    make_option(c("-d", "--data-dir"), default="data", metavar="data",
+                type="character", help="set the directory"),
+
+    make_option(c("-x", "--ext"), default="csv", metavar="csv",
+                type="character", help="choose 'csv' or 'tsv'"),
+
+    make_option(c("-s", "--save"), default=TRUE, action="store_false", metavar="TRUE",
+                type="logical", help="useful for troubleshooting"),
+
+    make_option(c("-e", "--estimate-total-reads"), default=TRUE, action="store_false", metavar="TRUE",
+                type="logical", help="in case total_num_reads is unavailable, use this to estimate the total_num_reads"),
+    
+    make_option(c("-m", "--merge-rpkms"), default=FALSE, action="store_true", metavar="FALSE",
+                type="logical", help="old pipeline computed RPKM instead of bringing it in"),
+
+    make_option(c("-k", "--keep-shared-genes"), default=FALSE, action="store_true", metavar="FALSE",
+                type="logical", help="select only genes available both gtf files. does nothing for now"),
+
+    make_option(c("-z", "--zscore"), default=0.99, metavar="0.99",
+                type="double", help="was 0.975 in Zach's version, but Berletch's paper requires 0.99")
+
+)
+opt_parser = OptionParser(option_list=option_list)
+opt = parse_args(opt_parser)
+
+
+# optional commands
+gene_id_col='gene_id'  # could use 'locus' for Disteche's data
+run_metadata_filename = 'run_metadata.csv'
 
 # in case total_num_reads is unavailable, use this to estimate the total_num_reads
 # In Berletch's 2015 paper, they got 9258991 snp-specific reads from 88842032 total reads
-estimate_total_num_reads=TRUE
 estimated_pct_snp_reads=0.104  # 9258991/88842032
 
-# File inputs
-file_ext='csv'
-data_dir = file.path(wd, 'data')
-run_metadata_filename = 'run_metadata.csv'
+
+# for readability downstream
+data_dir = file.path(wd, opt['data-dir'])
+file_ext=opt['ext']
+save<-opt['save'] 
+estimate_total_reads=opt["estimate-total-reads"]
+merge_rpkms=opt['merge-rpkms']
+keep_shared_genes=FALSE # opt['keep-shared-genes']
+zscore=opt['zscore']
 
 
 # ----------------------------------------------------------------------
@@ -53,13 +82,13 @@ if (!dir.exists(rpkms_dir)) {
 
 # in case we don't have the metadata_file
 if (!file.exists(metadata_file)) {
-    estimate_total_num_reads=TRUE
+    estimate_total_reads=TRUE
 }
 
 
 # select on genes only available both gtf files
 # not implemented
-if (keep_shared_genes | merge_rpkms==FALSE) {
+if (keep_shared_genes==TRUE | merge_rpkms==FALSE) {
     mat_exon_lengths_filepath = file.path(ref_dir, "exon_lengths-Mus_musculus.csv")
     pat_exon_lengths_filepath = file.path(ref_dir, "exon_lengths-Mus_musculus_casteij.csv")
     # Other: "exon_lengths-Mus_musculus_spretus.csv"
@@ -69,11 +98,11 @@ if (keep_shared_genes | merge_rpkms==FALSE) {
 start_time = Sys.time()
 log <- log_open(paste("escapegenecalculator ", start_time, '.log', sep=''))
 log_print(paste('Script started at:', start_time))
-if (save) {
+if (save==TRUE) {
     log_print(paste(Sys.time(), 'data_dir: ', file.path(data_dir)))
     log_print(paste(Sys.time(), 'keep_shared_genes: ', keep_shared_genes))
     log_print(paste(Sys.time(), 'merge_rpkms: ', merge_rpkms))
-    log_print(paste(Sys.time(), 'estimate_total_num_reads: ', estimate_total_num_reads))
+    log_print(paste(Sys.time(), 'estimate_total_reads: ', estimate_total_reads))
 } else {
     log_print(paste(Sys.time(), 'save: ', save))
 }
@@ -207,7 +236,7 @@ for (mouse_id in mouse_ids) {
     all_reads <- all_reads[all_reads['chromosome_mat']!='Y',]
 
     # Estimate total_num_reads, if necessary
-    if (estimate_total_num_reads) {
+    if (estimate_total_reads) {
         total_num_reads = num_snp_reads / estimated_pct_snp_reads
     } else {
         run_metadata <- read.csv(metadata_file, header=TRUE, sep=',', check.names=FALSE)
@@ -309,7 +338,7 @@ for (mouse_id in mouse_ids) {
     # Save
 
     # save data
-    if (save) {
+    if (save==TRUE) {
 
         log_print(paste(Sys.time(), "Writing data..."))
 
