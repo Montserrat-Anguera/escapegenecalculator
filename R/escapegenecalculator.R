@@ -49,6 +49,11 @@ opt = parse_args(opt_parser)
 #     "save" = TRUE
 # )
 
+# Exon lengths
+ref_dir = file.path(wd, "ref")
+mat_exon_lengths_filepath = file.path(ref_dir, "exon_lengths-Mus_musculus.csv")
+pat_exon_lengths_filepath = file.path(ref_dir, "exon_lengths-Mus_musculus_casteij.csv")
+
 # optional commands
 gene_id_col='gene_id'  # could use 'locus' for Disteche's data
 run_metadata_filename = 'run_metadata.csv'
@@ -74,9 +79,7 @@ zscore=opt['zscore'][[1]]
 read_counts_dir = file.path(in_dir, 'read_counts')
 rpkms_dir = file.path(in_dir, 'rpkms')
 metadata_file = file.path(in_dir, run_metadata_filename)
-
 out_dir = in_dir  # in case you wanted to change this
-ref_dir = file.path(wd, "ref")
 
 if (file_ext=='tsv') {
     sep='\t'
@@ -95,10 +98,6 @@ if (!file.exists(metadata_file)) {
 }
 
 
-# select on genes only available both gtf files
-# not implemented
-mat_exon_lengths_filepath = file.path(ref_dir, "exon_lengths-Mus_musculus.csv")
-pat_exon_lengths_filepath = file.path(ref_dir, "exon_lengths-Mus_musculus_casteij.csv")
 
 
 # Start Log
@@ -106,7 +105,11 @@ start_time = Sys.time()
 log <- log_open(paste("escapegenecalculator ", start_time, '.log', sep=''))
 log_print(paste('Script started at:', start_time))
 if (save==TRUE) {
-    log_print(paste(Sys.time(), 'input directory:', file.path(in_dir)))
+    log_print(paste(Sys.time(), 'input read_counts:', read_counts_dir))
+    log_print(paste(Sys.time(), 'rpkms directory:', rpkms_dir))
+    log_print(paste(Sys.time(), 'metadata file:', metadata_file))
+    log_print(paste(Sys.time(), 'mat exon_lengths:', mat_exon_lengths_filepath))
+    log_print(paste(Sys.time(), 'pat exon_lengths:', pat_exon_lengths_filepath))
     log_print(paste(Sys.time(), 'keep_shared_genes:', keep_shared_genes))
     log_print(paste(Sys.time(), 'merge_rpkms:', merge_rpkms))
     log_print(paste(Sys.time(), 'estimate_total_reads:', estimate_total_reads))
