@@ -89,9 +89,14 @@ cd path/to/escapegenecalculator
 Rscript R/calculate_exon_lengths.R  # ~1 minute
 Rscript R/extract_chromosome_lengths.R  # ~5 minutes
 
-# Zach's pipeline (to be deprecated)
+# Zach's pipeline on data/sierra-at2
 Rscript R/merge_read_counts.R -i data/sierra-at2 -x tsv
 Rscript R/step1-calculate_confidence_intervals.R -i data/sierra-at2
 Rscript R/step2-normalize_read_counts.R -i data/sierra-at2
+
+# Zach's pipeline on data/berletch-spleen
+Rscript R/merge_read_counts.R -i data/berletch-spleen
+Rscript R/step1-calculate_confidence_intervals.R -i data/berletch-spleen
+Rscript R/step2-normalize_read_counts.R -i data/berletch-spleen -p exon_lengths-Mus_spretus.csv
 ```
 

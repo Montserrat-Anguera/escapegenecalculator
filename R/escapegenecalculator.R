@@ -36,6 +36,10 @@ option_list = list(
     make_option(c("-z", "--zscore-threshold"), default=0.99, metavar="0.99",
                 type="double", help="was 0.975 in Zach's version, but Berletch's paper requires 0.99"),
 
+    make_option(c("-p", "--pat-exon-lengths-filename"), default="exon_lengths-Mus_musculus_casteij.csv",
+                  metavar="exon_lengths-Mus_musculus_casteij.csv",
+                  type="character", help="Choose 'exon_lengths-Mus_spretus.csv' for berletch-spleen dataset")
+
     make_option(c("-s", "--save"), default=TRUE, action="store_false", metavar="TRUE",
                 type="logical", help="disable if you're troubleshooting and don't want to overwrite your files")
     
@@ -62,8 +66,9 @@ opt = parse_args(opt_parser)
 # Exon lengths
 ref_dir = file.path(wd, "ref")
 mat_exon_lengths_filepath = file.path(ref_dir, "exon_lengths-Mus_musculus.csv")
-pat_exon_lengths_filepath = file.path(ref_dir, "exon_lengths-Mus_musculus_casteij.csv")
-# pat_exon_lengths_filepath = file.path(ref_dir, "exon_lengths-Mus_spretus.csv.csv")
+pat_exon_lengths_filepath = file.path(ref_dir, opt['pat-exon-lengths-filename'][[1]])
+# pat_exon_lengths_filepath = file.path(ref_dir, "exon_lengths-Mus_musculus.csv")  # for Katherine
+# pat_exon_lengths_filepath = file.path(ref_dir, "exon_lengths-Mus_spretus.csv")  # for Berletch
 
 
 # optional commands

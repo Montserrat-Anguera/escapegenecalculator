@@ -18,7 +18,11 @@ option_list = list(
                 type="character", help="useful for running multiple scripts on the same dataset"),
 
     make_option(c("-s", "--save"), default=TRUE, action="store_false", metavar="TRUE",
-                type="logical", help="disable if you're troubleshooting and don't want to overwrite your files")
+                type="logical", help="disable if you're troubleshooting and don't want to overwrite your files"),
+
+    make_option(c("-p", "--pat-exon-lengths-filename"), default="exon_lengths-Mus_musculus_casteij.csv",
+                  metavar="exon_lengths-Mus_musculus_casteij.csv",
+                  type="character", help="Choose 'exon_lengths-Mus_spretus.csv' for berletch-spleen dataset")
 
 )
 opt_parser = OptionParser(option_list=option_list)
@@ -40,9 +44,9 @@ opt = parse_args(opt_parser)
 # Exon lengths
 ref_dir = file.path(wd, "ref")
 mat_exon_lengths_filepath = file.path(ref_dir, "exon_lengths-Mus_musculus.csv")
-pat_exon_lengths_filepath = file.path(ref_dir, "exon_lengths-Mus_musculus_casteij.csv")
+pat_exon_lengths_filepath = file.path(ref_dir, opt['pat-exon-lengths-filename'][[1]])
 # pat_exon_lengths_filepath = file.path(ref_dir, "exon_lengths-Mus_musculus.csv")  # for Katherine
-# pat_exon_lengths_filepath = file.path(ref_dir, "exon_lengths-Mus_spretus.csv.csv")
+# pat_exon_lengths_filepath = file.path(ref_dir, "exon_lengths-Mus_spretus.csv")  # for Berletch
 
 
 # for readability downstream
@@ -218,8 +222,8 @@ norm_x_reads['female_xi_mean_srpm_gte_2'] <- as.integer(norm_x_reads['female_xi_
 norm_x_reads[is.na(norm_x_reads['female_xi_mean_srpm_gte_2']), 'female_xi_mean_srpm_gte_2'] <- 0
 
 filtered_data = norm_x_reads[
-	(norm_x_reads['female_mean_rpkm_gt_1'] != 0 | norm_x_reads['male_mean_rpkm_gt_1'] != 0)
-	& norm_x_reads['female_xi_mean_srpm_gte_2'] == 1,
+    (norm_x_reads['female_mean_rpkm_gt_1'] != 0 | norm_x_reads['male_mean_rpkm_gt_1'] != 0)
+    & norm_x_reads['female_xi_mean_srpm_gte_2'] == 1,
 ]
 
 
