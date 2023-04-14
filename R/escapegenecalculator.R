@@ -16,6 +16,9 @@ option_list = list(
     make_option(c("-i", "--input-data"), default="data", metavar="data",
                 type="character", help="set the directory"),
 
+    make_option(c("-o", "--output-dir"), default="output-2", metavar="output-2",
+                type="character", help="useful for running multiple scripts on the same dataset"),
+
     make_option(c("-x", "--ext"), default="csv", metavar="csv",
                 type="character", help="choose 'csv' or 'tsv'"),
 
@@ -71,6 +74,7 @@ estimate_total_reads=opt["estimate-total-reads"][[1]]
 merge_rpkms=opt['merge-rpkms'][[1]]
 keep_shared_genes=FALSE # opt['keep-shared-genes']
 zscore=opt['zscore'][[1]]
+out_dir = file.path(in_dir, opt['output-dir'][[1]])
 
 
 # ----------------------------------------------------------------------
@@ -79,7 +83,6 @@ zscore=opt['zscore'][[1]]
 read_counts_dir = file.path(in_dir, 'read_counts')
 rpkms_dir = file.path(in_dir, 'rpkms')
 metadata_file = file.path(in_dir, run_metadata_filename)
-out_dir = in_dir  # in case you wanted to change this
 
 if (file_ext=='tsv') {
     sep='\t'
@@ -96,8 +99,6 @@ if (!dir.exists(rpkms_dir)) {
 if (!file.exists(metadata_file)) {
     estimate_total_reads=TRUE
 }
-
-
 
 
 # Start Log
@@ -350,7 +351,7 @@ for (mouse_id in mouse_ids) {
         # X reads
 
         if (!dir.exists(file.path(out_dir, 'x_reads'))) {
-            dir.create(file.path(out_dir, 'x_reads'))
+            dir.create(file.path(out_dir, 'x_reads'), recursive=TRUE)
         }
 
         write.table(
@@ -364,7 +365,7 @@ for (mouse_id in mouse_ids) {
         # Escape genes
 
         if (!dir.exists(file.path(out_dir, 'escape_genes'))) {
-            dir.create(file.path(out_dir, 'escape_genes'))
+            dir.create(file.path(out_dir, 'escape_genes'), recursive=TRUE)
         }
 
         escape_genes = x_reads[
