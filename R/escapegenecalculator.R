@@ -2,6 +2,8 @@
 ## It takes SNP-specific mapped read counts as input,
 ## normalizes, computes confidence intervals, then outputs a list of escape genes.
 
+## Rscript R/escapegenecalculator.R -i data/berletch-spleen
+
 
 library('optparse')
 library('logr')
@@ -43,7 +45,8 @@ opt = parse_args(opt_parser)
 
 # for troubleshooting
 # opt <- list(
-#     "input-data" = "data", 
+#     "input-data" = "data/berletch-spleen",
+#     "output-dir" = "output-2",
 #     "ext" = "csv",
 #     "estimate-total-reads" = FALSE,
 #     "merge-rpkms" = TRUE,
@@ -52,10 +55,16 @@ opt = parse_args(opt_parser)
 #     "save" = TRUE
 # )
 
+
+# ----------------------------------------------------------------------
+# Pre-script settings
+
 # Exon lengths
 ref_dir = file.path(wd, "ref")
 mat_exon_lengths_filepath = file.path(ref_dir, "exon_lengths-Mus_musculus.csv")
 pat_exon_lengths_filepath = file.path(ref_dir, "exon_lengths-Mus_musculus_casteij.csv")
+# pat_exon_lengths_filepath = file.path(ref_dir, "exon_lengths-Mus_spretus.csv.csv")
+
 
 # optional commands
 gene_id_col='gene_id'  # could use 'locus' for Disteche's data
@@ -68,21 +77,21 @@ estimated_pct_snp_reads=0.104  # 9258991/88842032
 
 # for readability downstream
 in_dir = file.path(wd, opt['input-data'][[1]])
-file_ext=opt['ext'][[1]]
-save<-opt['save'][[1]]
-estimate_total_reads=opt["estimate-total-reads"][[1]]
-merge_rpkms=opt['merge-rpkms'][[1]]
-keep_shared_genes=FALSE # opt['keep-shared-genes']
-zscore=opt['zscore'][[1]]
 out_dir = file.path(in_dir, opt['output-dir'][[1]])
+file_ext = opt['ext'][[1]]
+save = opt['save'][[1]]
 
 
-# ----------------------------------------------------------------------
-# Pre-script settings
+estimate_total_reads = opt["estimate-total-reads"][[1]]
+merge_rpkms = opt['merge-rpkms'][[1]]
+keep_shared_genes = FALSE # opt['keep-shared-genes']
+zscore = opt['zscore'][[1]]
+
 
 read_counts_dir = file.path(in_dir, 'read_counts')
 rpkms_dir = file.path(in_dir, 'rpkms')
 metadata_file = file.path(in_dir, run_metadata_filename)
+
 
 if (file_ext=='tsv') {
     sep='\t'
@@ -90,10 +99,12 @@ if (file_ext=='tsv') {
     sep=','
 }
 
+
 # in case we don't have rpkms
 if (!dir.exists(rpkms_dir)) {
     merge_rpkms=FALSE
 }
+
 
 # in case we don't have the metadata_file
 if (!file.exists(metadata_file)) {
@@ -107,6 +118,7 @@ log <- log_open(paste("escapegenecalculator ", start_time, '.log', sep=''))
 log_print(paste('Script started at:', start_time))
 if (save==TRUE) {
     log_print(paste(Sys.time(), 'input read_counts:', read_counts_dir))
+    log_print(paste(Sys.time(), 'file_ext:', file_ext))
     log_print(paste(Sys.time(), 'rpkms directory:', rpkms_dir))
     log_print(paste(Sys.time(), 'metadata file:', metadata_file))
     log_print(paste(Sys.time(), 'mat exon_lengths:', mat_exon_lengths_filepath))

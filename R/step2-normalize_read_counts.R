@@ -1,28 +1,57 @@
 ## Computes RPM, RPKM, SRPM and filters the RPKMs using the confidence_intervals
+## Rscript R/step2-normalize_read_counts.R -i data/sierra-at2
 
-library(logr)
-wd = dirname(this.path::here())
+
+library('optparse')
+library('logr')
+wd = dirname(this.path::here())  # wd = '~/github/R/escapegenecalculator'
 source(file.path(wd, "R", "utils.R"))
-save=TRUE
 
 
-# Input parameters
-data_dir = file.path(wd, "data")
-all_reads_filename = "reads.csv"
-ci_data_filename = 'confidence_intervals.csv'
+# args
+option_list = list(
 
-ref_dir = file.path(wd, "data", "ref")
+    make_option(c("-i", "--input-data"), default="data", metavar="data",
+                type="character", help="set the directory"),
+
+    make_option(c("-o", "--output-dir"), default="output-1", metavar="output-1",
+                type="character", help="useful for running multiple scripts on the same dataset"),
+
+    make_option(c("-s", "--save"), default=TRUE, action="store_false", metavar="TRUE",
+                type="logical", help="disable if you're troubleshooting and don't want to overwrite your files")
+
+)
+opt_parser = OptionParser(option_list=option_list)
+opt = parse_args(opt_parser)
+
+
+# for troubleshooting
+# opt <- list(
+#     "input-data" = "data/sierra-at2", 
+#     "output-dir" = "output-1",
+#     "save" = TRUE,
+# )
+
+
+# ----------------------------------------------------------------------
+# Pre-script settings
+
+
+# Exon lengths
+ref_dir = file.path(wd, "ref")
 mat_exon_lengths_filepath = file.path(ref_dir, "exon_lengths-Mus_musculus.csv")
 pat_exon_lengths_filepath = file.path(ref_dir, "exon_lengths-Mus_musculus_casteij.csv")
 # pat_exon_lengths_filepath = file.path(ref_dir, "exon_lengths-Mus_musculus.csv")  # for Katherine
+# pat_exon_lengths_filepath = file.path(ref_dir, "exon_lengths-Mus_spretus.csv.csv")
 
-out_dir = file.path(data_dir, "normalized_reads")
-rpm_filename = 'rpm.csv'
-rpm_x_only_filename = 'rpm_x_only.csv'
-rpkm_filename = 'rpkm.csv'
-srpm_filename = 'srpm.csv'  # output in data_dir
-filtered_srpm_filename = 'srpm_filtered.csv'  # output in data_dir
-srpm_within_ci_filename = 'srpm_within_confidence_intervals.csv'  # output in data_dir
+
+# for readability downstream
+in_dir = file.path(wd, opt['input-data'][[1]])
+out_dir = file.path(in_dir, opt['output-dir'][[1]])
+save = opt['save'][[1]]
+
+all_reads_file = file.path(out_dir, 'reads', 'reads.csv')
+ci_file = file.path(out_dir, 'confidence_intervals.csv')
 
 
 # create out_dir
@@ -37,13 +66,9 @@ start_time = Sys.time()
 log <- log_open(paste("step2-normalize_read_counts ", start_time, '.log', sep=''))
 log_print(paste('Start ', start_time))
 if (save) {
-    log_print(paste('input file: ', file.path(data_dir, all_reads_filename)))
-    log_print(paste('output file 1: ', file.path(out_dir, rpm_filename)))
-    log_print(paste('output file 2: ', file.path(out_dir, rpm_x_only_filename)))
-    log_print(paste('output file 3: ', file.path(out_dir, rpkm_filename)))
-    log_print(paste('output file 4: ', file.path(out_dir, srpm_filename)))
-    log_print(paste('output file 5: ', file.path(out_dir, filtered_srpm_filename)))
-    log_print(paste('output file 6: ', file.path(out_dir, srpm_within_ci_filename)))
+    log_print(paste('all_reads file: ', all_reads_file))
+    log_print(paste(Sys.time(), 'mat exon_lengths:', mat_exon_lengths_filepath))
+    log_print(paste(Sys.time(), 'pat exon_lengths:', pat_exon_lengths_filepath))
 } else {
     log_print(paste('save: ', save))
 }
@@ -54,7 +79,7 @@ if (save) {
 
 log_print("Reading data...")
 
-all_reads <-read.csv(file.path(data_dir, "read_counts", all_reads_filename), na.string="NA", stringsAsFactors=FALSE,)
+all_reads <-read.csv(all_reads_file, na.string="NA", stringsAsFactors=FALSE,)
 all_reads <- na.omit(all_reads)
 
 # rpkm filter
@@ -63,7 +88,7 @@ pat_exon_lengths <- read.csv(pat_exon_lengths_filepath, na.string="NA", stringsA
 shared_genes = intersect(mat_exon_lengths[, 'gene_name'], pat_exon_lengths[, 'gene_name'])
 
 # final filter
-ci_data <- read.table(file.path(data_dir, ci_data_filename), header=TRUE, sep=",")  # used for filtering
+ci_data <- read.table(ci_file, header=TRUE, sep=",")  # used for filtering
 
 
 # ----------------------------------------------------------------------
@@ -85,9 +110,9 @@ norm_x_reads <- norm_reads[norm_reads['chromosome_mat']=='X', ]
 # write data
 if (save) {
     log_print('Writing RPM data...')
-    write.table(norm_reads, file.path(out_dir, rpm_filename),
+    write.table(norm_reads, file.path(out_dir, 'reads', 'rpm.csv'),
                 row.names=FALSE, col.names=TRUE, sep=',')
-    write.table(norm_x_reads, file.path(out_dir, rpm_x_only_filename),
+    write.table(norm_x_reads, file.path(out_dir, 'reads', 'rpm_x_only.csv'),
                 row.names=FALSE, col.names=TRUE, sep=',')
 }
 
@@ -137,7 +162,7 @@ if (save) {
     log_print("Writing RPKM data...")
     write.table(
         norm_x_reads[items_in_a_not_b(colnames(norm_x_reads), c("index", mat_count_cols, pat_count_cols))],
-        file = file.path(out_dir, rpkm_filename),
+        file = file.path(out_dir, 'reads', 'rpkm.csv'),
         row.names = FALSE,
         sep=','
     )
@@ -200,28 +225,38 @@ filtered_data = norm_x_reads[
 
 # save data
 if (save) {
+
     log_print("Writing SRPM data...")
+
+    # if (!dir.exists(file.path(out_dir, 'reads'))) {
+    #     dir.create(file.path(out_dir, 'reads'), recursive=TRUE)
+    # }
+
     index_cols = c('gene_name', 'gene_id_mat', 'gene_id_pat', 'chromosome_mat', 'chromosome_pat')
+    
     value_cols = c(
         'female_mean_rpkm', 'male_mean_rpkm',
         'female_xi_mean_srpm', 'female_xa_mean_srpm', 'male_xa_mean_srpm', 'male_xi_mean_srpm',
         'female_mean_srpm_xi_over_xa_ratio'
     )
+    
     metadata_cols = c(
         'female_mean_rpkm_gt_1',
         'male_mean_rpkm_gt_1',
         'female_xi_mean_srpm_gte_2'
     )
+    
     write.table(
         norm_x_reads,
-        file = file.path(data_dir, srpm_filename),
+        file = file.path(out_dir, 'reads', 'srpm.csv'),
         row.names = FALSE,
         sep = ','
     )
+    
     write.table(
         # filtered_data[items_in_a_not_b(colnames(filtered_data), c(mat_count_cols, pat_count_cols))],  # everything
         filtered_data[c(index_cols, value_cols, metadata_cols)],
-        file = file.path(data_dir, filtered_srpm_filename),
+        file = file.path(out_dir, 'reads', 'srpm_filtered.csv'),
         row.names = FALSE,
         sep = ','
     )
@@ -240,11 +275,13 @@ if (save) {
     log_print("Writing filtered SRPM data...")
     write.table(
         filtered_data,
-        file=file.path(data_dir, srpm_within_ci_filename),
+        file=file.path(out_dir, 'srpm_within_confidence_intervals.csv'),
         row.names = FALSE,
         sep = ','
     )
 }
 
-log_print(paste('End', Sys.time()))
+end_time = Sys.time()
+log_print(paste('Script ended at:', Sys.time()))
+log_print(paste("Script completed in:", difftime(end_time, start_time)))
 log_close()

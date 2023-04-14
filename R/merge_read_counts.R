@@ -2,39 +2,49 @@
 ## 1. Merges raw files from the read_counts dir
 ## 2. Generates a summary_long file
 
+## Rscript R/merge_read_counts.R -i data/sierra-at2 -x tsv
 
-library(logr)
-wd = dirname(this.path::here())
+library('optparse')
+library('logr')
+wd = dirname(this.path::here())  # wd = '~/github/R/escapegenecalculator'
 source(file.path(wd, 'R', 'utils.R'))
-save=TRUE  # useful for troubleshooting
 
 
-# Input parameters
-in_dir = file.path(wd, 'data', 'read_counts')
-out_dir = file.path(wd, 'data', 'read_counts')
-mat_dir = file.path(in_dir, 'mat_reads')  # has more genes
-pat_dir = file.path(in_dir, 'pat_reads')
+# args
+option_list = list(
+
+    make_option(c("-i", "--input-data"), default="data", metavar="data",
+                type="character", help="set the directory"),
+
+    make_option(c("-o", "--output-dir"), default="output-1", metavar="output-1",
+                type="character", help="useful for running multiple scripts on the same dataset"),
+
+    make_option(c("-x", "--ext"), default="csv", metavar="csv",
+                type="character", help="choose 'csv' or 'tsv'"),
+
+    make_option(c("-s", "--save"), default=TRUE, action="store_false", metavar="TRUE",
+                type="logical", help="disable if you're troubleshooting and don't want to overwrite your files")
+    
+)
+opt_parser = OptionParser(option_list=option_list)
+opt = parse_args(opt_parser)
+
+# for troubleshooting
+# opt <- list(
+#     "input-data" = "data/sierra-at2", 
+#     "output-dir" = "output-1",
+#     "ext" = "csv",
+#     "save" = TRUE
+# )
 
 
-# Start Log
-log <- log_open(paste('merge_read_counts ', Sys.time(), '.log', sep=''))
-if (save) {
-    log_print(paste('input dir: ', file.path(in_dir)))
-    log_print(paste('output file 1: ', file.path(out_dir, 'reads.csv')))
-    log_print(paste('output file 2: ', file.path(out_dir, 'reads_x_only.csv')))
-    log_print(paste('output file 3: ', file.path(out_dir, 'summary_long.csv')))
-    log_print(paste('output file 4: ', file.path(out_dir, 'summary_wide.csv')))
-} else {
-    log_print(paste('save: ', save))
-}
-
-#' Convenience function for reading in data
+#' Convenience function for reading in data specific to this script
 #'
 index_cols_ = c('gene_id', 'gene_name', 'chromosome')
 value_cols_ = 'count'
 join_many_reads <- function(dir_path, index_cols=index_cols_, value_cols=value_cols_, ext='csv', sep=',') {
     
-    reads = join_many_csv(dir_path, index_cols=index_cols, value_cols=value_cols, ext='csv', sep=',')
+    reads = join_many_csv(dir_path, index_cols=index_cols, value_cols=value_cols, ext=ext, sep=sep)
 
     colnames(reads) <- tolower(colnames(reads))
     colnames(reads) <- lapply(
@@ -52,12 +62,48 @@ join_many_reads <- function(dir_path, index_cols=index_cols_, value_cols=value_c
 
 
 # ----------------------------------------------------------------------
+# Pre-script settings
+
+# for readability downstream
+in_dir = file.path(wd, opt['input-data'][[1]])
+out_dir = file.path(in_dir, opt['output-dir'][[1]])
+file_ext = opt['ext'][[1]]
+save = opt['save'][[1]]
+
+
+# can change this in the future
+read_counts_dir = file.path(in_dir, 'read_counts')
+mat_dir = file.path(read_counts_dir, 'mat_reads')
+pat_dir = file.path(read_counts_dir, 'pat_reads')
+
+
+if (file_ext=='tsv') {
+    sep='\t'
+} else {
+    sep=','
+}
+
+# Start Log
+start_time = Sys.time()
+log <- log_open(paste("merge_read_counts ", start_time, '.log', sep=''))
+log_print(paste('Script started at:', start_time))
+if (save==TRUE) {
+    log_print(paste(Sys.time(), 'mat read_counts:', mat_dir))
+    log_print(paste(Sys.time(), 'pat read_counts:', pat_dir))
+    log_print(paste(Sys.time(), 'output dir:', out_dir))
+    log_print(paste(Sys.time(), 'file_ext:', file_ext))
+} else {
+    log_print(paste(Sys.time(), 'save: ', save))
+}
+
+
+# ----------------------------------------------------------------------
 # Merge data
 
-log_print('merging data...')
+log_print(Sys.time(), 'Merging data...')
 
-mat_reads <- join_many_reads(mat_dir)
-pat_reads <- join_many_reads(pat_dir)
+mat_reads <- join_many_reads(mat_dir, ext=file_ext, sep=sep)
+pat_reads <- join_many_reads(pat_dir, ext=file_ext, sep=sep)
 
 
 # inner join
@@ -84,11 +130,19 @@ all_reads <- all_reads[all_reads['chromosome_pat']!='Y',]  # filter Y chromosome
 
 # write data
 if (save) {
-    log_print('writing data...')
-    write.table(all_reads, file.path(out_dir, 'reads.csv'),
+
+    log_print(Sys.time(), 'writing data...')
+
+    if (!dir.exists(file.path(out_dir, 'reads'))) {
+        dir.create(file.path(out_dir, 'reads'), recursive=TRUE)
+    }
+
+    write.table(all_reads, file.path(out_dir, 'reads', 'reads.csv'),
                 row.names=FALSE, col.names=TRUE, sep=',')
-    write.table(all_reads[all_reads['chromosome_mat']=='X', ], file.path(out_dir, 'reads_x_only.csv'),
+    
+    write.table(all_reads[all_reads['chromosome_mat']=='X', ], file.path(out_dir, 'reads', 'reads_x_only.csv'),
                 row.names=FALSE, col.names=TRUE, sep=',')
+
 }
 
 
@@ -125,13 +179,22 @@ summary_wide['bias_xi_div_xa'] = summary_wide['all_reads_pat']/summary_wide['all
 
 # write data
 if (save) {
-    log_print('writing summary...')
-    write.table(summary_long, file.path(out_dir, 'summary_long.csv'),
+
+    log_print(Sys.time(), 'Writing summary...')
+
+    if (!dir.exists(file.path(out_dir, 'metadata'))) {
+        dir.create(file.path(out_dir, 'metadata'), recursive=TRUE)
+    }
+
+    write.table(summary_long, file.path(out_dir, 'metadata', 'summary_long.csv'),
                 quote=FALSE, col.names=TRUE, row.names=FALSE, sep=',')
-    write.table(summary_wide, file.path(out_dir, 'summary_wide.csv'),
+
+    write.table(summary_wide, file.path(out_dir, 'metadata', 'summary_wide.csv'),
                 quote=FALSE, col.names=TRUE, row.names=FALSE, sep=',')
+
 }
 
-
-log_print(paste('End', Sys.time()))
+end_time = Sys.time()
+log_print(paste('Script ended at:', Sys.time()))
+log_print(paste("Script completed in:", difftime(end_time, start_time)))
 log_close()

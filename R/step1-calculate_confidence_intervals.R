@@ -1,44 +1,85 @@
 ## Calculates confidence intervals according to Berletch et al.
+## Rscript R/step1-calculate_confidence_intervals.R -i data/sierra-at2
 
-library(logr)
-wd = dirname(this.path::here())
+
+library('optparse')
+library('logr')
+wd = dirname(this.path::here())  # wd = '~/github/R/escapegenecalculator'
 source(file.path(wd, 'R', 'utils.R'))
-save=TRUE  # useful for troubleshooting
 
 
-# Input parameters
-in_dir = file.path(wd, 'data', 'read_counts')
-x_reads_filename = 'reads_x_only.csv'
-read_summary_filename = 'summary_wide.csv'
-out_dir = file.path(wd, 'data')
-out_filename = 'confidence_intervals.csv'
+# args
+option_list = list(
+
+    make_option(c("-i", "--input-data"), default="data", metavar="data",
+                type="character", help="set the directory"),
+
+    make_option(c("-o", "--output-dir"), default="output-1", metavar="output-1",
+                type="character", help="useful for running multiple scripts on the same dataset"),
+
+    make_option(c("-s", "--save"), default=TRUE, action="store_false", metavar="TRUE",
+                type="logical", help="disable if you're troubleshooting and don't want to overwrite your files"),
+    
+    make_option(c("-z", "--zscore"), default=0.975, metavar="0.975",
+                type="double", help="was 0.975 in Zach's version, but Berletch's paper requires 0.99")
+
+)
+opt_parser = OptionParser(option_list=option_list)
+opt = parse_args(opt_parser)
 
 
-# Provide a z-score to be used in the confidence interval.
-zscore <- qnorm(0.975)
+# for troubleshooting
+# opt <- list(
+#     "input-data" = "data/sierra-at2", 
+#     "output-dir" = "output-1",
+#     "save" = TRUE,
+#     "zscore" = 0.975
+# )
+
+
+# ----------------------------------------------------------------------
+# Pre-script settings
+
+
+# for readability downstream
+in_dir = file.path(wd, opt['input-data'][[1]])
+out_dir = file.path(in_dir, opt['output-dir'][[1]])
+save = opt['save'][[1]]
+zscore = opt['zscore'][[1]]
+
+# can change this in the future
+x_reads_wide_file = file.path(out_dir, 'reads', 'reads_x_only.csv')
+read_summary_file = file.path(out_dir, 'metadata', 'summary_wide.csv')
+output_file = file.path(out_dir, 'confidence_intervals.csv')
 
 
 # Start Log
-log <- log_open(paste('step1-calculate_confidence_intervals ', Sys.time(), '.log', sep=''))
-log_print(paste('x_reads file: ', file.path(in_dir, x_reads_filename)))
-log_print(paste('read_summary file: ', file.path(in_dir, read_summary_filename)))
-log_print(paste('output file: ', file.path(out_dir, out_filename)))
+start_time = Sys.time()
+log <- log_open(paste('step1-calculate_confidence_intervals ', start_time, '.log', sep=''))
+log_print(paste('Script started at:', start_time))
+if (save==TRUE) {
+    log_print(paste('x_reads file: ', x_reads_wide_file))
+    log_print(paste('read_summary file: ', read_summary_file))
+    log_print(paste('output file: ', output_file))
+} else {
+    log_print(paste(Sys.time(), 'save: ', save))
+}
 
 
 # ----------------------------------------------------------------------
 # Read Data
 
 # Get read summary
-log_print('Reading data...')
+log_print(paste(Sys.time(), 'Reading data...'))
 
-x_reads_wide = read.csv(file.path(in_dir, x_reads_filename), header=TRUE, sep=',', check.names=FALSE)
-read_summary <- read.csv(file.path(in_dir, read_summary_filename), header=TRUE, sep=',', check.names=FALSE)  # for bias_xi_div_xa
+x_reads_wide = read.csv(x_reads_wide_file, header=TRUE, sep=',', check.names=FALSE)
+read_summary <- read.csv(read_summary_file, header=TRUE, sep=',', check.names=FALSE)  # for bias_xi_div_xa
 
 
 # ----------------------------------------------------------------------
 # Preprocessing
 
-log_print('Reshaping to long format...')
+log_print(paste(Sys.time(), 'Reshaping to long format...'))
 
 # Reshape to long format:
 #
@@ -81,7 +122,7 @@ x_reads = merge(x_reads, read_summary[, c('mouse_id', 'bias_xi_div_xa')], by=c('
 # ----------------------------------------------------------------------
 # Compute confidence intervals from binomial model
 
-log_print('Computing confidence intervals...')
+log_print(paste(Sys.time(), 'Computing confidence intervals...'))
 
 x_reads['total_reads'] = x_reads['num_reads_mat'] + x_reads['num_reads_pat']  # mat=Xa=n_i1, pat=Xi=n_i0
 x_reads['pct_xi'] = x_reads['num_reads_pat'] / x_reads['total_reads']
@@ -105,7 +146,7 @@ x_reads[is.na(x_reads[, 'upper_confidence_interval']), 'upper_confidence_interva
 # ----------------------------------------------------------------------
 # Postprocessing
 
-log_print('Reshaping to wide format...')
+log_print(paste(Sys.time(), 'Reshaping to wide format...'))
 
 # pivot back to wide format
 index_cols = c('gene_name', 'gene_id_mat', 'gene_id_pat', 'chromosome_mat', 'chromosome_pat')  # same as above
@@ -119,7 +160,7 @@ x_reads_wide = pivot(
 )
 
 
-log_print('Filtering...')
+log_print(paste(Sys.time(), 'Filtering...'))
 
 # lower_confidence_interval_filter on female mice
 mouse_id_to_gender <- read_summary[, c('mouse_id', 'mouse_gender')]
@@ -129,14 +170,22 @@ x_reads_filtered = x_reads_wide[apply(x_reads_wide[cols], 1, function(x) all(x>0
 
 
 if (save) {
-    log_print('writing data...')
+    
+    log_print(Sys.time(), 'Writing data...')
+
+    if (!dir.exists(file.path(out_dir))) {
+        dir.create(file.path(out_dir), recursive=TRUE)
+    }
+
     write.table(
         x_reads_filtered,
-        file = file.path(out_dir, out_filename),
+        file = output_file,
         row.names = FALSE,
         sep = ','
     )
 }
 
-log_print(paste('End', Sys.time()))
+end_time = Sys.time()
+log_print(paste('Script ended at:', Sys.time()))
+log_print(paste("Script completed in:", difftime(end_time, start_time)))
 log_close()

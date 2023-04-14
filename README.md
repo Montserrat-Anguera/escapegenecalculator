@@ -90,7 +90,8 @@ Rscript R/calculate_exon_lengths.R  # ~1 minute
 Rscript R/extract_chromosome_lengths.R  # ~5 minutes
 
 # Zach's pipeline (to be deprecated)
-Rscript R/merge_read_counts.R
-Rscript R/step1-calculate_confidence_intervals.R
-Rscript R/step2-normalize_read_counts.R
+Rscript R/merge_read_counts.R -i data/sierra-at2 -x tsv
+Rscript R/step1-calculate_confidence_intervals.R -i data/sierra-at2
+Rscript R/step2-normalize_read_counts.R -i data/sierra-at2
 ```
+
