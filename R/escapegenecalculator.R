@@ -235,7 +235,7 @@ for (mouse_id in mouse_ids) {
     all_reads <- all_reads[all_reads['chromosome_mat']!='Y',]
 
     # Estimate total_num_reads, if necessary
-    if (estimate_total_reads) {
+    if (estimate_total_reads==TRUE) {
         total_num_reads = num_snp_reads / estimated_pct_snp_reads
     } else {
         run_metadata <- read.csv(metadata_file, header=TRUE, sep=',', check.names=FALSE)
@@ -253,7 +253,7 @@ for (mouse_id in mouse_ids) {
 
     # Either merge RPKMs (good) or compute them from the data (bad)
     # RPKM (reads per kilobase of exon per million reads mapped)
-    if (merge_rpkms) {
+    if (merge_rpkms==TRUE) {
         rpkms_file = rpkms_filepaths[grep(mouse_id, basename(rpkms_filepaths))]
         rpkms = read.csv(rpkms_file, header=TRUE, sep=',', check.names=FALSE)
         all_reads = merge(
@@ -276,8 +276,8 @@ for (mouse_id in mouse_ids) {
 
         # In an attempt to scale up the RPKM number, I had a version where I normalized by pct_snp_reads
         # After thinking about it, this pct_snp_reads is already baked into the total_num_reads number
-        all_reads['rpm_mat'] = (all_reads['num_reads_mat'] / total_num_reads * 1e6) # / pct_snp_reads
-        all_reads['rpm_pat'] = (all_reads['num_reads_pat'] / total_num_reads * 1e6) # / pct_snp_reads
+        all_reads['rpm_mat'] = all_reads['num_reads_mat'] / total_num_reads * 1e6 # / pct_snp_reads
+        all_reads['rpm_pat'] = all_reads['num_reads_pat'] / total_num_reads * 1e6 # / pct_snp_reads
 
         exon_lengths = coalesce1(all_reads["exon_length_mat"], all_reads["exon_length_pat"])
         all_reads['rpkm_mat'] = all_reads['rpm_mat'] / exon_lengths * 1000
@@ -285,7 +285,7 @@ for (mouse_id in mouse_ids) {
 
         # We're trying to estimate total reads, so rowSums is more appropriate here than rowMeans
         all_reads['rpkm'] = rowSums(all_reads[c('rpkm_mat', 'rpkm_pat')])
-    
+
     }
 
 
