@@ -38,7 +38,7 @@ option_list = list(
 
     make_option(c("-p", "--pat-exon-lengths-filename"), default="exon_lengths-Mus_musculus_casteij.csv",
                   metavar="exon_lengths-Mus_musculus_casteij.csv",
-                  type="character", help="Choose 'exon_lengths-Mus_spretus.csv' for berletch-spleen dataset")
+                  type="character", help="Choose 'exon_lengths-Mus_spretus.csv' for berletch-spleen dataset"),
 
     make_option(c("-s", "--save"), default=TRUE, action="store_false", metavar="TRUE",
                 type="logical", help="disable if you're troubleshooting and don't want to overwrite your files")
@@ -90,7 +90,7 @@ save = opt['save'][[1]]
 estimate_total_reads = opt["estimate-total-reads"][[1]]
 merge_rpkms = opt['merge-rpkms'][[1]]
 keep_shared_genes = FALSE # opt['keep-shared-genes']
-zscore = qnorm(opt['zscore'][[1]])
+zscore = qnorm(opt['zscore-threshold'][[1]])
 
 
 read_counts_dir = file.path(in_dir, 'read_counts')
