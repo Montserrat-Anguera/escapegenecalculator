@@ -13,14 +13,11 @@ source(file.path(wd, 'R', 'utils.R'))
 # args
 option_list = list(
 
-    make_option(c("-d", "--data-dir"), default="data", metavar="data",
+    make_option(c("-i", "--input-data"), default="data", metavar="data",
                 type="character", help="set the directory"),
 
     make_option(c("-x", "--ext"), default="csv", metavar="csv",
                 type="character", help="choose 'csv' or 'tsv'"),
-
-    make_option(c("-s", "--save"), default=TRUE, action="store_false", metavar="TRUE",
-                type="logical", help="useful for troubleshooting"),
 
     make_option(c("-e", "--estimate-total-reads"), default=TRUE, action="store_false", metavar="TRUE",
                 type="logical", help="in case total_num_reads is unavailable, use this to estimate the total_num_reads"),
@@ -32,8 +29,11 @@ option_list = list(
                 type="logical", help="select only genes available both gtf files. does nothing for now"),
 
     make_option(c("-z", "--zscore"), default=0.99, metavar="0.99",
-                type="double", help="was 0.975 in Zach's version, but Berletch's paper requires 0.99")
+                type="double", help="was 0.975 in Zach's version, but Berletch's paper requires 0.99"),
 
+    make_option(c("-s", "--save"), default=TRUE, action="store_false", metavar="TRUE",
+                type="logical", help="disable if you're troubleshooting and don't want to overwrite your files")
+    
 )
 opt_parser = OptionParser(option_list=option_list)
 opt = parse_args(opt_parser)
@@ -49,7 +49,7 @@ estimated_pct_snp_reads=0.104  # 9258991/88842032
 
 
 # for readability downstream
-data_dir = file.path(wd, opt['data-dir'])
+in_dir = file.path(wd, opt['input-data'])
 file_ext=opt['ext']
 save<-opt['save'] 
 estimate_total_reads=opt["estimate-total-reads"]
@@ -61,12 +61,11 @@ zscore=opt['zscore']
 # ----------------------------------------------------------------------
 # Pre-script settings
 
-in_dir = data_dir
 read_counts_dir = file.path(in_dir, 'read_counts')
 rpkms_dir = file.path(in_dir, 'rpkms')
 metadata_file = file.path(in_dir, run_metadata_filename)
 
-out_dir = data_dir
+out_dir = in_dir  # in case you wanted to change this
 ref_dir = file.path(wd, "ref")
 
 if (file_ext=='tsv') {
@@ -99,12 +98,12 @@ start_time = Sys.time()
 log <- log_open(paste("escapegenecalculator ", start_time, '.log', sep=''))
 log_print(paste('Script started at:', start_time))
 if (save==TRUE) {
-    log_print(paste(Sys.time(), 'data_dir: ', file.path(data_dir)))
-    log_print(paste(Sys.time(), 'keep_shared_genes: ', keep_shared_genes))
-    log_print(paste(Sys.time(), 'merge_rpkms: ', merge_rpkms))
-    log_print(paste(Sys.time(), 'estimate_total_reads: ', estimate_total_reads))
+    log_print(paste(Sys.time(), 'input directory:', file.path(in_dir)))
+    log_print(paste(Sys.time(), 'keep_shared_genes:', keep_shared_genes))
+    log_print(paste(Sys.time(), 'merge_rpkms:', merge_rpkms))
+    log_print(paste(Sys.time(), 'estimate_total_reads:', estimate_total_reads))
 } else {
-    log_print(paste(Sys.time(), 'save: ', save))
+    log_print(paste(Sys.time(), 'save:', save))
 }
 
 
@@ -275,16 +274,17 @@ for (mouse_id in mouse_ids) {
         # the RPKM calculated becomes independent the estimated_pct_snp_reads
         pct_snp_reads = num_snp_reads / total_num_reads
 
-        # In Zach's version: rpm_mat = num_reads_mat / colSums(mat_reads[, 'count'])
-        # The correct way to implement this is actually
-        # rpm_mat = num_reads_mat / colSums(mat_reads[, 'count'] + pat_reads[, 'count'])
-        # Note that the total_num_reads washes out here, but I kept it for readability
-        all_reads['rpm_mat'] = (all_reads['num_reads_mat'] / total_num_reads * 1e6) / pct_snp_reads
-        all_reads['rpm_pat'] = (all_reads['num_reads_pat'] / total_num_reads * 1e6) / pct_snp_reads
+        # In an attempt to scale up the RPKM number, I had a version where I normalized by pct_snp_reads
+        # After thinking about it, this pct_snp_reads is already baked into the total_num_reads number
+        all_reads['rpm_mat'] = (all_reads['num_reads_mat'] / total_num_reads * 1e6) # / pct_snp_reads
+        all_reads['rpm_pat'] = (all_reads['num_reads_pat'] / total_num_reads * 1e6) # / pct_snp_reads
 
-        all_reads['rpkm_mat'] = all_reads['rpm_mat'] / all_reads["exon_length_mat"] * 1000
-        all_reads['rpkm_pat'] = all_reads['rpm_pat'] / coalesce1(all_reads["exon_length_pat"], all_reads["exon_length_mat"]) * 1000
-        all_reads['rpkm'] = rowMeans(all_reads[c('rpkm_mat', 'rpkm_pat')])  # this is where things could go wonky
+        exon_lengths = coalesce1(all_reads["exon_length_mat"], all_reads["exon_length_pat"])
+        all_reads['rpkm_mat'] = all_reads['rpm_mat'] / exon_lengths * 1000
+        all_reads['rpkm_pat'] = all_reads['rpm_pat'] / exon_lengths * 1000
+
+        # We're trying to estimate total reads, so rowSums is more appropriate here than rowMeans
+        all_reads['rpkm'] = rowSums(all_reads[c('rpkm_mat', 'rpkm_pat')])
     
     }
 
