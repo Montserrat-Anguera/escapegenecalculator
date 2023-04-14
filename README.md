@@ -75,7 +75,7 @@ To run the new pipeline:
 
 ```bash
 cd path/to/escapegenecalculator
-Rscript R/escapegenecalculator.R
+Rscript R/escapegenecalculator.R -i data/berletch-spleen
 ```
 
 
