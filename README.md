@@ -8,7 +8,7 @@ Escape from X Inactivation Varies in Mouse Tissues. PLoS Genet 11(3): e1005079.
 doi:10.1371/journal.pgen.1005079
 ```
 
-This code has existed in Montserrat Anguera's lab for a while, passing through multiple hands before it finally made its way to me (Harrison Wang). Montserrat originally paid a postdoc to write the code. It was then passed to Zachary Beetham, who maintained and modified it until he left in early 2021, after which it was passed to Sarah Pyfrom. I received these files from Sarah when I started my rotation and subsequently went to work refactoring it into something usable. The result of this are five scripts:
+This code has existed in Montserrat Anguera's lab for a while, passing through multiple hands before it finally made its way to me (Harrison Wang). Xiang Yu wrote the original code some time in 2020. It was then passed to Zachary Beetham, who maintained and modified it until he left in early 2021, after which it was passed to Sarah Pyfrom. I received these files from Sarah when I started my rotation and subsequently went to work refactoring it into something usable. The result of this are five scripts:
 
 ```
 R/preprocessing/calculate_exon_lengths.R
