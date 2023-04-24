@@ -9,6 +9,8 @@ import plotly.graph_objs as go
 
 # Functions
 # # read_many_csv
+# # snake_to_title_case
+# # adjust_closer
 # # multi_melt
 # # save_fig_as_png
 # # plot_gel
@@ -26,6 +28,23 @@ def read_many_csv(filepaths):
     appended = pd.concat(dfs, axis=0)
         
     return appended
+
+
+def snake_to_title_case(text):
+    """Converts column_title to "Column Title"
+    """
+    return ' '.join(map(lambda x: x.capitalize(), text.split('_')))
+
+
+def adjust_closer(comparator, base_value, tolerance=0.063):
+    """If exon_length_pat is too far off from exon_length_mat, adjust it closer
+    """
+    if comparator / base_value <= 1-tolerance:
+        return base_value * (1-tolerance)
+    elif comparator / base_value >= 1+tolerance:
+        return base_value * (1+tolerance)
+    else:
+        return comparator
 
 
 def multi_melt(
@@ -80,9 +99,12 @@ def plot_gel(
         intensity_col='intensity',
         text_col='intensity',
         column_order=[],
+        ylabel=None,
         title=None,
         yrange=[None, None],  # only works if both are
         showlegend=False,
+        font_size=12,
+        tickangle=-45,
         band_width=0.04,
         lane_width=100,
         top_margin=150,
@@ -138,10 +160,11 @@ def plot_gel(
     
     yrange=[np.log10(lim) if lim else None for lim in yrange]
     fig.layout.update(
-        {'xaxis': {'side': 'top', 'tickangle': -45, 'type': 'category', 'autorange': 'reversed',
+        {'xaxis': {'side': 'top', 'tickangle': tickangle,
+                   'type': 'category', 'autorange': 'reversed',
                    'categoryorder': "array", 'categoryarray': column_order[::-1]
                   },
-         'yaxis': {'type': 'log', 'range': yrange, 'ticks': 'outside', 'showline': True},
+         'yaxis': {'type': 'log', 'range': yrange, 'ticks': 'outside', 'showline': True, 'title': ylabel},
          'title': title,
          'legend': {'title': {'text': 'genes'}, 'tracegroupgap': 0},
          'margin': {'t': top_margin},
@@ -151,7 +174,7 @@ def plot_gel(
          'autosize': False,
          'plot_bgcolor': 'rgba(0,0,0,0)',
          'showlegend': showlegend,
-         # 'legend': {'traceorder': 'reversed'},
+         'font': {'size': font_size},
         }
     )
     
