@@ -4,8 +4,8 @@
 import numpy as np
 import pandas as pd
 import plotly.graph_objs as go
+import plotly.express as px
 
-# from harrison_functions.utils.plotting.plotly import save_fig_as_png
 
 # Functions
 # # read_many_csv
@@ -14,6 +14,7 @@ import plotly.graph_objs as go
 # # multi_melt
 # # save_fig_as_png
 # # plot_gel
+# # plot_multiscatter
 
 
 def read_many_csv(filepaths):
@@ -178,4 +179,61 @@ def plot_gel(
         }
     )
     
+    return fig
+
+
+def plot_multiscatter(
+    df, x, y, color, size=None,
+    xlabel=None, ylabel=None, clabel=None, title=None,
+    xmin=None, xmax=None,
+    ymin=None, ymax=None,
+    hover_data=[],
+    xaxis_type='linear',
+    yaxis_type='linear',
+    color_discrete_map={},
+    ):
+
+    # Range params
+    if not xmin:
+        xmin = df[x].min()
+    if not xmax:
+        xmax = df[x].max()
+    if xaxis_type=='linear':
+        xrange = [xmin - (xmax-xmin) * 0.05, xmax + (xmax-xmin) * 0.05]  # add padding
+    if xaxis_type=='log':
+        xrange=[np.log10(x) if x > 0 else np.nan for x in [xmin, xmax]]
+        
+    if not ymin:
+        ymin = df[y].min()
+    if not ymax:
+        ymax = df[y].max()
+    if yaxis_type=='linear':
+        yrange = [ymin - (ymax-ymin) * 0.1, ymax + (ymax-ymin) * 0.1]
+    if yaxis_type=='log':
+        yrange=[np.log10(y) if y > 0 else np.nan for y in [ymin, ymax]]
+
+    fig = px.scatter(
+        df,
+        x=x, y=y, color=color, size=size,
+        hover_data=hover_data,
+        color_discrete_map=color_discrete_map
+    )
+    
+    fig.layout.update(
+        title=title,
+        xaxis={'title_text': xlabel,
+               'showgrid': True,
+               'range': xrange,
+               'type': xaxis_type
+               },
+        yaxis={'title_text': ylabel,
+               'showgrid': True, 'gridcolor': '#E4EAF2', 'zeroline': False,
+               'range': yrange,
+               'type': yaxis_type
+              },
+        plot_bgcolor='rgba(0,0,0,0)',
+        showlegend=True,
+        hovermode='closest'
+    )
+
     return fig
