@@ -41,8 +41,8 @@ items_in_a_not_b <- function(a, b) {
 #' list all files in all subdirectories with a given extension
 #' 
 #' @export
-list_files <- function(dir_path, ext=NULL, recursive = TRUE) {
-    all_files = list.files(dir_path, recursive = recursive, full.name=TRUE)
+list_files <- function(dir_path, recursive = TRUE, full_name=TRUE, ext=NULL) {
+    all_files = list.files(dir_path, recursive = recursive, full.name=full_name)
 
     if (!is.null(ext)) {
         # See: https://stackoverflow.com/questions/7187442/filter-a-vector-of-strings-based-on-string-matching
@@ -134,7 +134,7 @@ pivot <- function(df, columns, values) {
 
 
 #' Read all the csv files from a directory and left join them into a single dataframe
-#' See: https://stackoverflow.com/questions/5319839/read-multiple-csv-files-into-separate-all_reads-frames
+#' See: https://stackoverflow.com/questions/5319839/read-multiple-csv-files-into-separate-all_data-frames
 #' index_cols=c('gene_id', 'gene_name', 'chromosome')
 #' index_cols=c('count')
 #' 
@@ -152,7 +152,7 @@ join_many_csv <- function(dir_path, index_cols, value_cols, ext='csv', recursive
     # Warning: column names ‘count.x’, ‘count.y’ are duplicated in the result
     # See: https://stackoverflow.com/questions/38603668/suppress-any-emission-of-a-particular-warning-message
     withCallingHandlers({
-        all_reads <- Reduce(
+        all_data <- Reduce(
             function(...) merge(..., by=index_cols),
             lapply(df_list, "[", c(index_cols, value_cols))
         )
@@ -164,11 +164,11 @@ join_many_csv <- function(dir_path, index_cols, value_cols, ext='csv', recursive
     })
     
     # rename columns
-    colnames(all_reads) = c(
+    colnames(all_data) = c(
         index_cols,  # index_cols
         as.list(outer(value_cols, filenames, paste, sep='-'))  # suffix value_cols with filename
     )
-    return(all_reads)
+    return(all_data)
 }
 
 
@@ -193,3 +193,17 @@ coalesce1 <- function(...) {
     }
     ans
 }
+
+
+#'
+read_csv_or_tsv <- function(file, header=TRUE, sep=',', check_names=FALSE) {
+    ext = tools::file_ext(file)
+    if (ext == 'tsv') {
+        sep='\t'
+    }
+
+    data = read.csv(file, header=header, sep=sep, check.names=check_names)
+    return(data)
+}
+
+
