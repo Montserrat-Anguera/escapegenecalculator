@@ -76,7 +76,6 @@ get_reads <- function(reads_filename, chromosomal_parentage='mat', mouse_strain=
 }
 
 
-
 # Start Log
 start_time = Sys.time()
 log <- log_open(paste("escapegenecalculator ", start_time, '.log', sep=''))
@@ -155,9 +154,10 @@ for (mouse_id in mouse_ids) {
     )
     
     rpkms_file = file.path(in_dir, "rpkms", rpkms_filename)
-    if (file.exists(rpkms_file)) {
+    if (file.exists(rpkms_file) && !dir.exists(rpkms_file)) {
         rpkms = read_csv_or_tsv(rpkms_file)
     } else {
+        # this will cause the rpkms to be estimated downstream
         rpkms = NULL
     }
 
@@ -296,7 +296,7 @@ for (mouse_id in mouse_ids) {
 
 
     # ----------------------------------------------------------------------
-    # Filters
+    # Filter flags
 
     x_reads['xi_srpm_gte_2'] <- as.integer(x_reads['srpm_pat'] >= 2)
     x_reads[is.na(x_reads['xi_srpm_gte_2']), 'xi_srpm_gte_2'] <- 0
@@ -306,11 +306,6 @@ for (mouse_id in mouse_ids) {
 
     x_reads['lower_ci_gt_0'] <- as.integer(x_reads['lower_confidence_interval'] > 0)
 
-    # filtered_x_reads = x_reads[
-    #     (x_reads['rpkm_gt_1'] != 0) &
-    #     (x_reads['xi_srpm_gte_2'] == 1) &
-    #     (x_reads['lower_ci_gt_0'] == 1),
-    # ]
 
     # ----------------------------------------------------------------------
     # Save
