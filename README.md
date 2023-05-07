@@ -43,6 +43,7 @@ install.packages("logr")
 install.packages("data.table")
 install.packages("this.path")  # See: https://github.com/ArcadeAntics/this.path
 install.packages("optparse")
+install.packages("tidyr")
 # install.packages("dplyr")  # eliminated this as a dependency
 
 install.packages("BiocManager")
