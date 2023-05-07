@@ -15,10 +15,10 @@ source(file.path(wd, 'R', 'utils.R'))
 # args
 option_list = list(
 
-    make_option(c("-i", "--input-data"), default="data/berletch-spleen", metavar="data/berletch-spleen",
+    make_option(c("-i", "--input-dir"), default="data/berletch-spleen", metavar="data/berletch-spleen",
                 type="character", help="set the directory"),
 
-    make_option(c("-o", "--output-dir"), default="output-2", metavar="output-2",
+    make_option(c("-o", "--output-subdir"), default="output-2", metavar="output-2",
                 type="character", help="useful for running multiple scripts on the same dataset"),
 
     make_option(c("-z", "--zscore-threshold"), default=0.99, metavar="0.99",
@@ -38,9 +38,9 @@ opt = parse_args(opt_parser)
 
 
 # for readability downstream
-base_dir = file.path(wd, opt['input-data'][[1]])
+base_dir = file.path(wd, opt['input-dir'][[1]])
 in_dir = file.path(base_dir, 'input')
-out_dir = file.path(base_dir, opt['output-dir'][[1]])
+out_dir = file.path(base_dir, opt['output-subdir'][[1]])
 zscore = qnorm(opt['zscore-threshold'][[1]])  # 2.326 if zscore_threshold=0.99
 save = opt['save'][[1]]
 

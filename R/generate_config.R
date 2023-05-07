@@ -2,16 +2,16 @@
 ## using filenames to store metadata
 
 
+wd = dirname(this.path::here())  # wd = '~/github/R/escapegenecalculator'
 library('optparse')
 library('logr')
-wd = dirname(this.path::here())  # wd = '~/github/R/escapegenecalculator'
 source(file.path(wd, 'R', 'utils.R'))
 
 
 # args
 option_list = list(
 
-    make_option(c("-i", "--input-dir"), default="data/berletch-spleen", metavar="data/berletch-splee",
+    make_option(c("-i", "--input-dir"), default="data/berletch-spleen", metavar="data/berletch-spleen",
                 type="character", help="set the base directory"),
 
     make_option(c("-o", "--output-dir"), default="output-2", metavar="output-2",
@@ -94,6 +94,10 @@ df = as.data.frame(do.call(cbind,
          pat_reads_filenames=pat_reads_files,
          rpkms_filenames=rpkms_files))
 )
+
+if (length(rpkms_files)==0) {
+    df['rpkms_filenames'] = NA
+}
 
 df['mouse_id'] = paste('mouse_', seq(1, nrow(df), by=1), sep='')  # generate mouse_id if needed
 df['mouse_gender'] = default_mouse_gender  # see above
