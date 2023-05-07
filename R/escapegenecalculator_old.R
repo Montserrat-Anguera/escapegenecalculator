@@ -16,9 +16,6 @@ option_list = list(
     make_option(c("-o", "--output-subdir"), default="output-1", metavar="output-1",
                 type="character", help="useful for running multiple scripts on the same dataset"),
 
-    make_option(c("-x", "--ext"), default="tsv", metavar="tsv",
-                type="character", help="choose 'csv' or 'tsv'"),
-    
     make_option(c("-z", "--zscore-threshold"), default=0.975, metavar="0.975",
                 type="double", help="was 0.975 in Zack's version, but Berletch's paper requires 0.99"),
     
@@ -38,15 +35,8 @@ opt = parse_args(opt_parser)
 base_dir = file.path(wd, opt['input-dir'][[1]])
 in_dir = file.path(base_dir, 'input')
 out_dir = file.path(base_dir, opt['output-subdir'][[1]])
-file_ext = opt['ext'][[1]]
 zscore = qnorm(opt['zscore-threshold'][[1]])  # 1.96 if zscore_threshold=0.975
 save = opt['save'][[1]]
-
-if (file_ext=='tsv') {
-    sep='\t'
-} else {
-    sep=','
-}
 
 
 #' Convenience function to only read relevant rows into memory
@@ -55,10 +45,7 @@ get_reads <- function(reads_dir, config, chromosome_parentage='mat') {
 
     index_cols_ = c('gene_id', 'gene_name', 'chromosome')
     value_cols_ = 'count'
-    reads <- join_many_csv(
-        reads_dir,
-        index_cols=index_cols_, value_cols=value_cols_, ext=file_ext, sep=sep
-    )
+    reads <- join_many_csv(reads_dir, index_cols=index_cols_, value_cols=value_cols_)
 
     # rename columns
     mouse_id_for_filename = dict(
@@ -144,7 +131,6 @@ if (save==TRUE) {
     log_print(paste(Sys.time(), 'base_dir:', base_dir))
     log_print(paste(Sys.time(), 'in_dir:', in_dir))
     log_print(paste(Sys.time(), 'output dir:', out_dir))
-    log_print(paste(Sys.time(), 'file_ext:', file_ext))
     log_print(paste(Sys.time(), 'zscore:', zscore))
 } else {
     log_print(paste(Sys.time(), 'save: ', save))
@@ -168,8 +154,15 @@ if (file.exists(config_file)) {
 
 log_print(Sys.time(), 'Merging data...')
 
-mat_reads = get_reads(file.path(in_dir, 'mat_reads'), config, chromosome_parentage='mat')
-pat_reads = get_reads(file.path(in_dir, 'pat_reads'), config, chromosome_parentage='pat')
+# read in files specified in the config file
+mat_reads = get_reads(
+    file.path(in_dir, "mat_reads", config[, 'mat_reads_filenames']),
+    config, chromosome_parentage='mat'
+)
+pat_reads = get_reads(
+    file.path(in_dir, "pat_reads", config[, 'pat_reads_filenames']),
+    config, chromosome_parentage='pat'
+)
 
 # merge on gene name
 # only keep rows where gene names exist

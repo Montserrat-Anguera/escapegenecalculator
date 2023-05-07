@@ -148,20 +148,30 @@ pivot <- function(df, columns, values) {
 
 #' Read all the csv files from a directory and left join them into a single dataframe
 #' See: https://stackoverflow.com/questions/5319839/read-multiple-csv-files-into-separate-all_data-frames
+#' The paths argument can be a single directory or a list of individual files
 #' index_cols=c('gene_id', 'gene_name', 'chromosome')
-#' index_cols=c('count')
+#' value_cols=c('count')
 #' 
 #' @export
-join_many_csv <- function(dir_path, index_cols, value_cols, ext='csv', recursive=TRUE, sep=',') {
-    filepaths <- list_files(dir_path, ext=ext, recursive=recursive)
-    if (length(filepaths)==0) {
-        stop(paste("no files found in: ", dir_path))
-    }
-    filenames = c(tools::file_path_sans_ext(basename(filepaths)))
-    
-    # read dfs and left join on index_cols
-    df_list <- lapply(filepaths, read.csv, sep=sep)
+join_many_csv <- function(paths, index_cols, value_cols, recursive=TRUE) {
 
+    # distinguish if paths is a directory or a list of files
+    if (length(paths)==1) {
+        if (dir.exists(paths)) {
+             paths <- list_files(paths, recursive=recursive)
+        }
+    } else if (length(paths[file.exists(paths)]) == 0) {
+        stop(paste("no files found!"))
+    }
+
+    # split into csv and tsv files
+    csv_paths = filter_list_for_match(paths, 'csv')
+    csv_list <- lapply(csv_paths, read.csv, sep=',')
+    tsv_paths = filter_list_for_match(paths, 'tsv')
+    tsv_list <- lapply(tsv_paths, read.csv, sep='\t') 
+    df_list = c(csv_list, tsv_list)
+
+    filenames = c(tools::file_path_sans_ext(basename(paths)))
     # Warning: column names ‘count.x’, ‘count.y’ are duplicated in the result
     # See: https://stackoverflow.com/questions/38603668/suppress-any-emission-of-a-particular-warning-message
     withCallingHandlers({
