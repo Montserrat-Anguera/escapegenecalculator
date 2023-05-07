@@ -10,28 +10,22 @@ source(file.path(wd, 'R', 'utils.R'))
 # args
 option_list = list(
 
-    make_option(c("-i", "--input-data"), default="data/sierra-at2", metavar="data/sierra-at2",
+    make_option(c("-i", "--input-dir"), default="data/berletch-spleen", metavar="data/berletch-spleen",
                 type="character", help="set the directory"),
 
-    make_option(c("-o", "--output-dir"), default="output-1", metavar="output-1",
+    make_option(c("-o", "--output-subdir"), default="output-1", metavar="output-1",
                 type="character", help="useful for running multiple scripts on the same dataset"),
 
     make_option(c("-x", "--ext"), default="tsv", metavar="tsv",
                 type="character", help="choose 'csv' or 'tsv'"),
-
+    
     make_option(c("-z", "--zscore-threshold"), default=0.975, metavar="0.975",
                 type="double", help="was 0.975 in Zack's version, but Berletch's paper requires 0.99"),
-
-    make_option(c("-p", "--pat-exon-lengths-filename"), default="exon_lengths-Mus_musculus_casteij.csv",
-                  metavar="exon_lengths-Mus_musculus_casteij.csv",
-                  type="character", help="Choose 'exon_lengths-Mus_spretus.csv' for berletch-spleen dataset"),
- 
+    
     make_option(c("-s", "--save"), default=TRUE, action="store_false", metavar="TRUE",
                 type="logical", help="disable if you're troubleshooting and don't want to overwrite your files")
 
-
 )
-
 opt_parser = OptionParser(option_list=option_list)
 opt = parse_args(opt_parser)
 
@@ -40,14 +34,52 @@ opt = parse_args(opt_parser)
 # Pre-script settings
 
 
-#' Convenience function for reading in data specific to this script
-#'
-index_cols_ = c('gene_id', 'gene_name', 'chromosome')
-value_cols_ = 'count'
-join_many_reads <- function(dir_path, index_cols=index_cols_, value_cols=value_cols_, ext='csv', sep=',') {
-    
-    reads = join_many_csv(dir_path, index_cols=index_cols, value_cols=value_cols, ext=ext, sep=sep)
+# for readability downstream
+base_dir = file.path(wd, opt['input-dir'][[1]])
+in_dir = file.path(base_dir, 'input')
+out_dir = file.path(base_dir, opt['output-subdir'][[1]])
+file_ext = opt['ext'][[1]]
+zscore = qnorm(opt['zscore-threshold'][[1]])  # 1.96 if zscore_threshold=0.975
+save = opt['save'][[1]]
 
+if (file_ext=='tsv') {
+    sep='\t'
+} else {
+    sep=','
+}
+
+
+#' Convenience function to only read relevant rows into memory
+#'
+get_reads <- function(reads_dir, config, chromosome_parentage='mat') {
+
+    index_cols_ = c('gene_id', 'gene_name', 'chromosome')
+    value_cols_ = 'count'
+    reads <- join_many_csv(
+        reads_dir,
+        index_cols=index_cols_, value_cols=value_cols_, ext=file_ext, sep=sep
+    )
+
+    # rename columns
+    mouse_id_for_filename = dict(
+        keys=lapply(config[paste(chromosome_parentage, '_reads_filenames', sep='')],
+                    tools::file_path_sans_ext
+                    )[[1]],
+        values=config['mouse_id'][[1]]
+    )
+
+    value_cols = items_in_a_not_b(colnames(reads), index_cols_)
+    colnames(reads) = c(
+        index_cols_,
+        # renamed value cols
+        paste('count', '-', chromosome_parentage, '-',
+              unlist(mouse_id_for_filename[gsub('count-', '', value_cols)]),
+              sep=''
+        )
+
+    )
+
+    # standardize columns
     colnames(reads) <- tolower(colnames(reads))
     colnames(reads) <- lapply(
       colnames(reads),
@@ -59,28 +91,48 @@ join_many_reads <- function(dir_path, index_cols=index_cols_, value_cols=value_c
         return (step4)}
     )
 
-    return (reads)
+    return(reads)
 }
 
 
-# for readability downstream
-in_dir = file.path(wd, opt['input-data'][[1]])
-out_dir = file.path(in_dir, opt['output-dir'][[1]])
-file_ext = opt['ext'][[1]]
-zscore = qnorm(opt['zscore-threshold'][[1]])  # 1.96 if zscore_threshold=0.975
-save = opt['save'][[1]]
+#' Convenience function to left join summed reads
+#'
+concat_reads <- function(
+        df, reads, cols,
+        new_colname="reads", chromosome_parentage="mat", prefix='num_reads_'
+    ) {
 
+    # sum the reads
+    reads_for_mouse_id = colSums(reads[cols])
 
-# can change this in the future
-read_counts_dir = file.path(in_dir, 'input')
-mat_dir = file.path(read_counts_dir, 'mat_reads')
-pat_dir = file.path(read_counts_dir, 'pat_reads')
+    # remove 'count-mat-' from 'count-mat-mouse_1'
+    names(reads_for_mouse_id) = gsub(
+        paste(prefix, chromosome_parentage, '_', sep=''), '',
+        names(reads_for_mouse_id)
+    )
 
+    # instantiate the following dataframe
+    # +----------+-----------------+
+    # | mouse_id | total_reads_mat |
+    # +----------+-----------------+
+    # | mouse_1  |      4773667    |
+    # | mouse_2  |      5222637    |
+    # | mouse_3  |      3279278    |
+    # +----------+-----------------+
+    reads_df = data.frame(
+        mouse_id = names(reads_for_mouse_id),
+        reads = reads_for_mouse_id
+    )
+    colnames(reads_df) = c('mouse_id', new_colname)  # rename new column
 
-if (file_ext=='tsv') {
-    sep='\t'
-} else {
-    sep=','
+    # left join to the main table
+    df = merge(
+        df, reads_df,
+        by='mouse_id',
+        all.x=FALSE, all.y=FALSE,  # do not include null values
+        na_matches = 'never'
+    )
+    return(df)
 }
 
 
@@ -89,25 +141,38 @@ start_time = Sys.time()
 log <- log_open(paste("escapegenecalculator_old ", start_time, '.log', sep=''))
 log_print(paste('Script started at:', start_time))
 if (save==TRUE) {
-    log_print(paste(Sys.time(), 'mat read_counts:', mat_dir))
-    log_print(paste(Sys.time(), 'pat read_counts:', pat_dir))
+    log_print(paste(Sys.time(), 'base_dir:', base_dir))
+    log_print(paste(Sys.time(), 'in_dir:', in_dir))
     log_print(paste(Sys.time(), 'output dir:', out_dir))
     log_print(paste(Sys.time(), 'file_ext:', file_ext))
+    log_print(paste(Sys.time(), 'zscore:', zscore))
 } else {
     log_print(paste(Sys.time(), 'save: ', save))
 }
 
 
 # ----------------------------------------------------------------------
-# Merge data
+# Set config
+
+config_file = file.path(out_dir, 'config.csv')
+log_print(paste(Sys.time(), 'config_file:', config_file))
+if (file.exists(config_file)) {
+    config <- read.csv(config_file, header=TRUE, sep=',', check.names=FALSE)
+} else {
+    stop('config.csv is required to proceed')
+}
+
+
+# ----------------------------------------------------------------------
+# Read in raw data
 
 log_print(Sys.time(), 'Merging data...')
 
-mat_reads <- join_many_reads(mat_dir, ext=file_ext, sep=sep)
-pat_reads <- join_many_reads(pat_dir, ext=file_ext, sep=sep)
+mat_reads = get_reads(file.path(in_dir, 'mat_reads'), config, chromosome_parentage='mat')
+pat_reads = get_reads(file.path(in_dir, 'pat_reads'), config, chromosome_parentage='pat')
 
-
-# inner join
+# merge on gene name
+# only keep rows where gene names exist
 all_reads = merge(
     mat_reads[(mat_reads['gene_name']!=''), ],
     pat_reads[(pat_reads['gene_name']!=''), ],
@@ -121,7 +186,6 @@ index_cols = c('gene_name', 'gene_id_mat', 'chromosome_mat', 'gene_id_pat', 'chr
 num_reads_cols = items_in_a_not_b(colnames(all_reads), index_cols)
 all_reads <- all_reads[, c(index_cols, num_reads_cols)]
 
-
 # filter duplicates on maternal
 # note: there are still duplicates on paternal, but that might be ok
 all_reads <- all_reads[!duplicated(all_reads[, c('gene_id_mat', 'chromosome_mat')]),]
@@ -133,7 +197,7 @@ x_reads_wide = all_reads[(all_reads['chromosome_mat']=='X'), ]
 # write data
 if (save) {
 
-    log_print(Sys.time(), 'writing data...')
+    log_print(Sys.time(), 'Saving merged data...')
 
     if (!dir.exists(file.path(out_dir, 'reads'))) {
         dir.create(file.path(out_dir, 'reads'), recursive=TRUE)
@@ -149,36 +213,25 @@ if (save) {
 
 
 # ----------------------------------------------------------------------
-# Generate summary data, should find a way to eliminate this
+# Generate read_summary
 
-log_print('generating summary...')
+log_print('Counting reads...')
 
-# concatenate data into summary
 mat_cols = items_in_a_not_b(colnames(mat_reads), c('gene_id', 'gene_name', 'chromosome'))
 pat_cols = items_in_a_not_b(colnames(pat_reads), c('gene_id', 'gene_name', 'chromosome'))
-summary_long = data.frame(
-    'all_reads' = c(colSums(mat_reads[mat_cols]), colSums(pat_reads[pat_cols])),
-    'filtered_reads' = colSums(all_reads[, num_reads_cols])
+
+# append counts to config file
+read_summary = concat_reads(config, mat_reads, mat_cols, new_colname='total_reads_mat')
+read_summary = concat_reads(
+    read_summary, pat_reads, pat_cols,
+    new_colname='total_reads_pat', chromosome_parentage="pat"
 )
-rownames(summary_long) <- sapply(rownames(summary_long), function(x) gsub('num_reads_', '', x))
-summary_long = reset_index(summary_long, 'metadata')
-
-# extract metadata
-summary_long['mouse_id'] <- sapply(summary_long[, 'metadata'], function(x) strsplit(x, split='_male_|_female_')[[1]][1])
-summary_long['mouse_gender'] = gsub('_', '', stringr::str_extract(summary_long[,'metadata'], '_female_|_male_'))
-summary_long['chromosomal_parentage'] = gsub('_', '', stringr::str_extract(summary_long[,'metadata'], '_mat_|_pat_'))
-
-
-# pivot to wide format
-summary_wide <- pivot(
-    summary_long[c('metadata', 'mouse_id', 'mouse_gender', 'chromosomal_parentage', 'all_reads', 'filtered_reads')],
-    columns=c('chromosomal_parentage'),
-    values=c('metadata', 'all_reads', 'filtered_reads')
+read_summary = concat_reads(read_summary, all_reads, mat_cols, new_colname='filtered_reads_mat')
+read_summary = concat_reads(
+    read_summary, all_reads, pat_cols,
+    new_colname='filtered_reads_pat', chromosome_parentage="pat"
 )
-summary_wide['bias_xi_div_xa'] = summary_wide['all_reads_pat']/summary_wide['all_reads_mat']
-
-read_summary <- summary_wide  # fix this later
-
+read_summary['bias_xi_div_xa'] = read_summary['total_reads_pat']/read_summary['total_reads_mat']
 
 # write data
 if (save) {
@@ -189,10 +242,7 @@ if (save) {
         dir.create(file.path(out_dir, 'metadata'), recursive=TRUE)
     }
 
-    write.table(summary_long, file.path(out_dir, 'metadata', 'summary_long.csv'),
-                quote=FALSE, col.names=TRUE, row.names=FALSE, sep=',')
-
-    write.table(summary_wide, file.path(out_dir, 'metadata', 'summary_wide.csv'),
+    write.table(read_summary, file.path(out_dir, 'metadata', 'read_summary.csv'),
                 quote=FALSE, col.names=TRUE, row.names=FALSE, sep=',')
 
 }
@@ -218,11 +268,17 @@ x_reads_long = reshape::melt(
     x_reads_wide,
     id.vars=index_cols
 )
-names(x_reads_long)[names(x_reads_long) == 'variable'] <- 'metadata'
 names(x_reads_long)[names(x_reads_long) == 'value'] <- 'num_reads'
-x_reads_long['metadata'] <- sapply(x_reads_long['metadata'], function(x) gsub('num_reads_', '', x))
-x_reads_long['mouse_id'] <- sapply(x_reads_long[, 'metadata'], function(x) strsplit(x, split='_male_|_female_')[[1]][1])
-x_reads_long['chromosomal_parentage'] = gsub('_', '', stringr::str_extract(x_reads_long[,'metadata'], '_mat_|_pat_'))
+names(x_reads_long)[names(x_reads_long) == 'variable'] <- 'colname'
+
+# extract mouse_id from colname
+x_reads_long['mouse_id'] <- sapply(
+    x_reads_long[, 'colname'],
+    function(x) strsplit(as.character(x), split='_mat_|_pat_')[[1]][2]
+)
+x_reads_long['chromosomal_parentage'] <- gsub(
+    '_', '', stringr::str_extract(x_reads_long[,'colname'], '_mat_|_pat_')
+)
 
 
 # Reshape to double long format:
@@ -241,6 +297,8 @@ x_reads = pivot(
 )
 x_reads = merge(x_reads, read_summary[, c('mouse_id', 'bias_xi_div_xa')], by=c('mouse_id'))  # join bias data from read_summary
 
+
+# Compute confidence intervals
 
 log_print(paste(Sys.time(), 'Computing confidence intervals...'))
 
@@ -302,13 +360,15 @@ if (save) {
     )
 }
 
+
 # ----------------------------------------------------------------------
 # Normalization
 
 # Exon lengths
-ref_dir = file.path(wd, "ref")
-mat_exon_lengths_filepath = file.path(ref_dir, "exon_lengths-Mus_musculus.csv")
-pat_exon_lengths_filepath = file.path(ref_dir, opt['pat-exon-lengths-filename'][[1]])
+mat_mouse_strain = most_frequent_item(config, 'mat_mouse_strain')
+pat_mouse_strain = most_frequent_item(config, 'pat_mouse_strain')
+mat_exon_lengths_filepath = file.path(wd, "ref",  paste("exon_lengths-", mat_mouse_strain, ".csv", sep=''))
+pat_exon_lengths_filepath = file.path(wd, "ref",  paste("exon_lengths-", pat_mouse_strain, ".csv", sep=''))
 
 # shared genes filter
 mat_exon_lengths <- read.csv(mat_exon_lengths_filepath, na.string="NA", stringsAsFactors=FALSE,)
@@ -316,7 +376,7 @@ pat_exon_lengths <- read.csv(pat_exon_lengths_filepath, na.string="NA", stringsA
 shared_genes = intersect(mat_exon_lengths[, 'gene_name'], pat_exon_lengths[, 'gene_name'])
 
 # final filter
-ci_data <- x_reads_filtered 
+ci_data <- x_reads_filtered
 # ci_data <- read.table(ci_file, header=TRUE, sep=",")  # used for filtering
 
 
@@ -404,10 +464,16 @@ if (save) {
 log_print('Computing Mean RPKMs...')
 
 # Mean RPKM calculations
-female_mat_rpkm_cols = filter_list_for_match(colnames(norm_x_reads), pattern=c('rpkm', '_female_', 'mat'))  # Xa
-female_pat_rpkm_cols = filter_list_for_match(colnames(norm_x_reads), pattern=c('rpkm', '_female_', 'pat'))  # Xi
-male_mat_rpkm_cols = filter_list_for_match(colnames(norm_x_reads), pattern=c('rpkm', '_male_', 'mat'))  # Xa
-male_pat_rpkm_cols = filter_list_for_match(colnames(norm_x_reads), pattern=c('rpkm', '_male_', 'pat'))  # Xi
+female_mat_rpkm_cols = paste('rpkm_mat', config[(config['mouse_gender']=='female'), 'mouse_id'], sep='_')
+female_pat_rpkm_cols = paste('rpkm_pat', config[(config['mouse_gender']=='female'), 'mouse_id'], sep='_')
+male_mat_rpkm_cols = intersect(
+    colnames(norm_x_reads),
+    paste('rpkm_mat', config[(config['mouse_gender']=='male'), 'mouse_id'], sep='_')
+)
+male_pat_rpkm_cols = intersect(
+    colnames(norm_x_reads),
+    paste('rpkm_pat', config[(config['mouse_gender']=='male'), 'mouse_id'], sep='_')
+)
 
 norm_x_reads['female_xa_mean_rpkm'] = rowMeans(norm_x_reads[female_mat_rpkm_cols])
 norm_x_reads['female_xi_mean_rpkm'] = rowMeans(norm_x_reads[female_pat_rpkm_cols])
@@ -418,18 +484,22 @@ norm_x_reads['female_mean_rpkm'] = norm_x_reads['female_xa_mean_rpkm'] + norm_x_
 norm_x_reads['male_mean_rpkm'] = norm_x_reads['male_xa_mean_rpkm'] + norm_x_reads['male_xi_mean_rpkm'] 
 
 
-# ----------------------------------------------------------------------
-# Compute Mean SRPMs (allele-specific SNP-containing exonic reads per 10 million uniquely mapped reads)
-
-female_mat_count_cols = filter_list_for_match(colnames(norm_x_reads), pattern=c('rpm', '_female_', 'mat'))  # Xa
-female_pat_count_cols = filter_list_for_match(colnames(norm_x_reads), pattern=c('rpm', '_female_', 'pat'))  # Xi
-male_mat_count_cols = filter_list_for_match(colnames(norm_x_reads), pattern=c('rpm', '_male_', 'mat'))  # Xa
-male_pat_count_cols = filter_list_for_match(colnames(norm_x_reads), pattern=c('rpm', '_male_', 'pat'))  # Xi
-
-norm_x_reads['female_xa_mean_srpm'] = rowMeans(norm_x_reads[female_mat_count_cols])*10
-norm_x_reads['female_xi_mean_srpm'] = rowMeans(norm_x_reads[female_pat_count_cols])*10
-norm_x_reads['male_xa_mean_srpm'] = rowMeans(norm_x_reads[male_mat_count_cols])*10
-norm_x_reads['male_xi_mean_srpm'] = rowMeans(norm_x_reads[male_pat_count_cols])*10
+# Mean SRPM calculations 
+# ie. allele-specific SNP-containing exonic reads per 10 million uniquely mapped reads
+female_mat_rpm_cols = paste('rpm_mat', config[(config['mouse_gender']=='female'), 'mouse_id'], sep='_')
+female_pat_rpm_cols = paste('rpm_pat', config[(config['mouse_gender']=='female'), 'mouse_id'], sep='_')
+male_mat_rpm_cols = intersect(
+    colnames(norm_x_reads),
+    paste('rpm_mat', config[(config['mouse_gender']=='male'), 'mouse_id'], sep='_')
+)
+male_pat_rpm_cols = intersect(
+    colnames(norm_x_reads),
+    paste('rpm_pat', config[(config['mouse_gender']=='male'), 'mouse_id'], sep='_')
+)
+norm_x_reads['female_xa_mean_srpm'] = rowMeans(norm_x_reads[female_mat_rpm_cols])*10
+norm_x_reads['female_xi_mean_srpm'] = rowMeans(norm_x_reads[female_pat_rpm_cols])*10
+norm_x_reads['male_xa_mean_srpm'] = rowMeans(norm_x_reads[male_mat_rpm_cols])*10
+norm_x_reads['male_xi_mean_srpm'] = rowMeans(norm_x_reads[male_pat_rpm_cols])*10
 
 norm_x_reads['female_mean_srpm_xi_over_xa_ratio'] = norm_x_reads['female_xi_mean_srpm']/norm_x_reads['female_xa_mean_srpm']
 

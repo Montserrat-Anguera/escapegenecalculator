@@ -67,6 +67,11 @@ filter_list_for_match <- function(items, pattern) {
     return (unlist(items[!sapply(items, identical, character(0))]))  # remove character(0)
 }
 
+#' instantiate a named list
+#'
+dict <- function(keys, values) {
+    return(setNames(values, keys))
+}
 
 # ----------------------------------------------------------------------
 # Dataframe manipulation
@@ -96,6 +101,14 @@ filter_dataframe_column_by_list <- function(dataframe, colname, items, index_nam
     } else {
         return (data[, items_in_a_not_b(colnames(data), 'index')])
     }
+}
+
+
+#' Get the most frequently occurring function in a dataframe column
+#'
+#' @export
+most_frequent_item <- function(df, colname) {
+    return(df[which.max(factor(df[, colname])), colname])
 }
 
 

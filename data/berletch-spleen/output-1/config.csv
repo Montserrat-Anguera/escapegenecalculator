@@ -1,0 +1,3 @@
+"mat_reads_filenames","pat_reads_filenames","rpkms_filenames","mouse_id","mouse_gender","mat_mouse_strain","pat_mouse_strain"
+"read_counts-rep_1-female-mat-bl6.csv","read_counts-rep_1-female-pat-spretus.csv","rpkms-rep_1.csv","mouse_1","female","Mus_musculus","Mus_spretus"
+"read_counts-rep_2-female-mat-bl6.csv","read_counts-rep_2-female-pat-spretus.csv","rpkms-rep_2.csv","mouse_2","female","Mus_musculus","Mus_spretus"

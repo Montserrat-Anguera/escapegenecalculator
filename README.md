@@ -69,11 +69,24 @@ Rscript R/calculate_exon_lengths.R  # ~1 minute
 Rscript R/extract_chromosome_lengths.R  # ~5 minutes
 ```
 
+Old pipeline (output in `output-1`):
+
+```bash
+cd path/to/escapegenecalculator
+
+# data/berletch-spleen
+Rscript R/generate_config.R -i data/berletch-spleen -o output-1
+Rscript R/escapegenecalculator_old.R -i data/berletch-spleen -x csv
+
+# data/sierra-at2
+Rscript R/generate_config.R -i data/sierra-at2 -o output-1
+# make sure to update the mouse_gender
+Rscript R/escapegenecalculator_old.R
+```
 
 New pipeline (output in `output-2`):
 
 ```bash
-# single line for everything
 cd path/to/escapegenecalculator
 
 # data/berletch-spleen
@@ -84,22 +97,6 @@ Rscript R/escapegenecalculator.R -i data/berletch-spleen
 Rscript R/generate_config.R -i data/sierra-at2
 Rscript R/escapegenecalculator.R -i data/sierra-at2
 ```
-
-Old pipeline (output in `output-1`):
-
-```bash
-cd path/to/escapegenecalculator
-
-# data/berletch-spleen
-Rscript R/generate_config.R -i data/berletch-spleen -o output-1
-Rscript R/escapegenecalculator_old.R -i data/berletch-spleen
-
-# data/sierra-at2
-Rscript R/generate_config.R -i data/sierra-at2 -o output-1
-# make sure to update the mouse_gender
-Rscript R/escapegenecalculator_old.R
-```
-
 
 ## Contributing
 
