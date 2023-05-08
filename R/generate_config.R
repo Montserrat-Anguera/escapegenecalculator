@@ -20,7 +20,7 @@ option_list = list(
     make_option(c("-m", "--mat-mouse-strain"), default="Mus_musculus", metavar="Mus_musculus",
                 type="character", help="set the maternal mouse strain"),
 
-    make_option(c("-p", "--pat-mouse-strain"), default="Mus_spretus", metavar="Mus_spretus",
+    make_option(c("-p", "--pat-mouse-strain"), default="Mus_musculus_casteij", metavar="Mus_musculus_casteij",
                 type="character", help="set the paternal mouse strain"),
 
     make_option(c("-s", "--save"), default=TRUE, action="store_false", metavar="TRUE",

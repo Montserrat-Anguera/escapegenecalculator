@@ -334,7 +334,7 @@ log_print(paste(Sys.time(), 'Filtering...'))
 mouse_id_to_gender <- read_summary[, c('mouse_id', 'mouse_gender')]
 female_mice = mouse_id_to_gender[mouse_id_to_gender['mouse_gender']=='female', 'mouse_id']
 cols = paste('lower_confidence_interval', female_mice, sep='_')
-x_reads_filtered = x_reads_wide[apply(x_reads_wide[cols], 1, function(x) all(x>0)), ]  # all columns > 0
+ci_data = x_reads_wide[apply(x_reads_wide[cols], 1, function(x) all(x>0)), ]  # all columns > 0
 
 
 if (save) {
@@ -346,7 +346,7 @@ if (save) {
     }
 
     write.table(
-        x_reads_filtered,
+        ci_data,
         file = file.path(out_dir, 'confidence_intervals.csv'),
         row.names = FALSE,
         sep = ','
@@ -367,10 +367,6 @@ pat_exon_lengths_filepath = file.path(wd, "ref",  paste("exon_lengths-", pat_mou
 mat_exon_lengths <- read.csv(mat_exon_lengths_filepath, na.string="NA", stringsAsFactors=FALSE,)
 pat_exon_lengths <- read.csv(pat_exon_lengths_filepath, na.string="NA", stringsAsFactors=FALSE,)
 shared_genes = intersect(mat_exon_lengths[, 'gene_name'], pat_exon_lengths[, 'gene_name'])
-
-# final filter
-ci_data <- x_reads_filtered
-# ci_data <- read.table(ci_file, header=TRUE, sep=",")  # used for filtering
 
 
 # ----------------------------------------------------------------------

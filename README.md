@@ -76,12 +76,12 @@ cd path/to/escapegenecalculator
 
 # data/berletch-spleen
 Rscript R/generate_config.R -i data/berletch-spleen -o output-1
-Rscript R/escapegenecalculator_old.R -i data/berletch-spleen -x csv
+Rscript R/escapegenecalculator_old.R -i data/berletch-spleen
 
 # data/sierra-at2
 Rscript R/generate_config.R -i data/sierra-at2 -o output-1
 # make sure to update the mouse_gender
-Rscript R/escapegenecalculator_old.R
+Rscript R/escapegenecalculator_old.R -i data/sierra-at2
 ```
 
 New pipeline (output in `output-2`):
@@ -90,11 +90,11 @@ New pipeline (output in `output-2`):
 cd path/to/escapegenecalculator
 
 # data/berletch-spleen
-Rscript R/generate_config.R  # default
+Rscript R/generate_config.R -i data/berletch-spleen -o output-2 # default
 Rscript R/escapegenecalculator.R -i data/berletch-spleen
 
 # data/sierra-at2
-Rscript R/generate_config.R -i data/sierra-at2
+Rscript R/generate_config.R -i data/sierra-at2 -o output-2
 Rscript R/escapegenecalculator.R -i data/sierra-at2
 ```
 
