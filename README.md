@@ -8,16 +8,8 @@ Escape from X Inactivation Varies in Mouse Tissues. PLoS Genet 11(3): e1005079.
 doi:10.1371/journal.pgen.1005079
 ```
 
-This code has existed in Montserrat Anguera's lab for a while, passing through multiple hands before it finally made its way to me (Harrison Wang). Xiang Yu wrote the original code some time in 2020. It was then passed to Zachary Beethem, who maintained and modified it until he left in early 2021, after which it was passed to Sarah Pyfrom. I received these files from Sarah when I started my rotation and subsequently went to work refactoring it into something usable. The result of this are five scripts:
+This code has existed in Montserrat Anguera's lab for a while, passing through multiple hands before it finally made its way to me (Harrison Wang). Xiang Yu wrote the original code some time in 2020. It was then passed to Zachary Beethem, who maintained and modified it until he left in early 2021, after which it was passed to Sarah Pyfrom. I received these files from Sarah.
 
-```
-R/preprocessing/calculate_exon_lengths.R
-R/preprocessing/extract_chromosome_lengths.R
-R/merge_read_counts.R
-R/step1-calculate_confidence_intervals.R
-R/step2-normalize_read_counts.R
-R/utils.R
-```
 
 While working on this project, one of my early questions is why our lab consistently comes up with many more escape genes (~25%) than what the literature suggests (<10%). After much testing, finally going back to Berletch's source data, located on GEO here: [GSE59777](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE59777), we finally discovered three major errors:
 
@@ -25,15 +17,12 @@ While working on this project, one of my early questions is why our lab consiste
 2. Zack's version averages mice together, but in Disteche's chapter in the X Chromosome Inactivation Methods book published in 2018 (found [here](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6269188/)), they say this: "Biological replicates of RNA-seq experiments should be analyzed separately." 
 3. Finally, like the `total_num_reads`, the RPKMs must also be derived a priori, because they are calculated on all mapped reads, not just the SNP-specific reads. In the absence of that information, I impute the `total_num_reads` by estimating that the total SNP-specific reads is about 0.121 of the `total_num_reads`. Using this as a estimate brings the computed/estimated RPKM down to reasonable values.
 
-With these changes, we now get a much shorter list of escape genes, more consistent with what the literature suggests. However, it may well be possible that we are still underestimating the true `total_num_reads`, which we will need to go back to the upstream steps in order to obtain this. We are working diligently on a fix!
-
-I'd imagine once we fix these issues, we will be deprecating Zack's version of the pipeline.
-
+With these changes, we now get a much shorter list of escape genes, more consistent with what the literature suggests.
 
 
 ## Installation
 
-Run the following in your R console. My machine is on R 4.2.3, but I believe any version should work fine, as I'm only using Base R and nothing fancy.
+Run the following in your R console. My machine is on R 4.3.0, but I believe any version should work fine, as I'm only using Base R and nothing fancy.
 
 ```R
 install.packages("devtools") # warning: takes a long time!
@@ -43,6 +32,7 @@ install.packages("logr")
 install.packages("data.table")
 install.packages("this.path")  # See: https://github.com/ArcadeAntics/this.path
 install.packages("optparse")
+install.packages("tidyr")
 # install.packages("dplyr")  # eliminated this as a dependency
 
 install.packages("BiocManager")
@@ -82,39 +72,31 @@ Rscript R/extract_chromosome_lengths.R  # ~5 minutes
 Old pipeline (output in `output-1`):
 
 ```bash
-# data/sierra-at2
-Rscript R/merge_read_counts.R -i data/sierra-at2 -x tsv
-Rscript R/step1-calculate_confidence_intervals.R -i data/sierra-at2
-Rscript R/step2-normalize_read_counts.R -i data/sierra-at2
+cd path/to/escapegenecalculator
 
 # data/berletch-spleen
-Rscript R/merge_read_counts.R -i data/berletch-spleen
-Rscript R/step1-calculate_confidence_intervals.R -i data/berletch-spleen
-Rscript R/step2-normalize_read_counts.R -i data/berletch-spleen -p exon_lengths-Mus_spretus.csv
+Rscript R/generate_config.R -i data/berletch-spleen -o output-1
+Rscript R/escapegenecalculator_old.R -i data/berletch-spleen
 
-# data/zack-b_cells-day_0
-Rscript R/merge_read_counts.R -i data/zack-b_cells-day_0
-Rscript R/step1-calculate_confidence_intervals.R -i data/zack-b_cells-day_0
-Rscript R/step2-normalize_read_counts.R -i data/zack-b_cells-day_0 -p exon_lengths-Mus_musculus.csv
-
-# data/zack-b_cells-day_2
-Rscript R/merge_read_counts.R -i data/zack-b_cells-day_2
-Rscript R/step1-calculate_confidence_intervals.R -i data/zack-b_cells-day_2
-Rscript R/step2-normalize_read_counts.R -i data/zack-b_cells-day_2 -p exon_lengths-Mus_musculus.csv
+# data/sierra-at2
+Rscript R/generate_config.R -i data/sierra-at2 -o output-1
+# make sure to update the mouse_gender
+Rscript R/escapegenecalculator_old.R -i data/sierra-at2
 ```
 
 New pipeline (output in `output-2`):
 
 ```bash
-# single line for everything
 cd path/to/escapegenecalculator
+
+# data/berletch-spleen
+Rscript R/generate_config.R -i data/berletch-spleen -o output-2 # default
 Rscript R/escapegenecalculator.R -i data/berletch-spleen
-Rscript R/escapegenecalculator.R -i data/sierra-at2 -x tsv
-Rscript R/escapegenecalculator.R -i data/zack-b_cells-day_0
-Rscript R/escapegenecalculator.R -i data/zack-b_cells-day_2
+
+# data/sierra-at2
+Rscript R/generate_config.R -i data/sierra-at2 -o output-2
+Rscript R/escapegenecalculator.R -i data/sierra-at2
 ```
-
-
 
 ## Contributing
 

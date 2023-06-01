@@ -41,8 +41,8 @@ items_in_a_not_b <- function(a, b) {
 #' list all files in all subdirectories with a given extension
 #' 
 #' @export
-list_files <- function(dir_path, ext=NULL, recursive = TRUE) {
-    all_files = list.files(dir_path, recursive = recursive, full.name=TRUE)
+list_files <- function(dir_path, recursive = TRUE, full_name=TRUE, ext=NULL) {
+    all_files = list.files(dir_path, recursive = recursive, full.name=full_name)
 
     if (!is.null(ext)) {
         # See: https://stackoverflow.com/questions/7187442/filter-a-vector-of-strings-based-on-string-matching
@@ -67,6 +67,11 @@ filter_list_for_match <- function(items, pattern) {
     return (unlist(items[!sapply(items, identical, character(0))]))  # remove character(0)
 }
 
+#' instantiate a named list
+#'
+dict <- function(keys, values) {
+    return(setNames(values, keys))
+}
 
 # ----------------------------------------------------------------------
 # Dataframe manipulation
@@ -96,6 +101,14 @@ filter_dataframe_column_by_list <- function(dataframe, colname, items, index_nam
     } else {
         return (data[, items_in_a_not_b(colnames(data), 'index')])
     }
+}
+
+
+#' Get the most frequently occurring function in a dataframe column
+#'
+#' @export
+most_frequent_item <- function(df, colname) {
+    return(df[which.max(factor(df[, colname])), colname])
 }
 
 
@@ -134,25 +147,35 @@ pivot <- function(df, columns, values) {
 
 
 #' Read all the csv files from a directory and left join them into a single dataframe
-#' See: https://stackoverflow.com/questions/5319839/read-multiple-csv-files-into-separate-all_reads-frames
+#' See: https://stackoverflow.com/questions/5319839/read-multiple-csv-files-into-separate-all_data-frames
+#' The paths argument can be a single directory or a list of individual files
 #' index_cols=c('gene_id', 'gene_name', 'chromosome')
-#' index_cols=c('count')
+#' value_cols=c('count')
 #' 
 #' @export
-join_many_csv <- function(dir_path, index_cols, value_cols, ext='csv', recursive=TRUE, sep=',') {
-    filepaths <- list_files(dir_path, ext=ext, recursive=recursive)
-    if (length(filepaths)==0) {
-        stop(paste("no files found in: ", dir_path))
-    }
-    filenames = c(tools::file_path_sans_ext(basename(filepaths)))
-    
-    # read dfs and left join on index_cols
-    df_list <- lapply(filepaths, read.csv, sep=sep)
+join_many_csv <- function(paths, index_cols, value_cols, recursive=TRUE) {
 
+    # distinguish if paths is a directory or a list of files
+    if (length(paths)==1) {
+        if (dir.exists(paths)) {
+             paths <- list_files(paths, recursive=recursive)
+        }
+    } else if (length(paths[file.exists(paths)]) == 0) {
+        stop(paste("no files found!"))
+    }
+
+    # split into csv and tsv files
+    csv_paths = filter_list_for_match(paths, 'csv')
+    csv_list <- lapply(csv_paths, read.csv, sep=',')
+    tsv_paths = filter_list_for_match(paths, 'tsv')
+    tsv_list <- lapply(tsv_paths, read.csv, sep='\t') 
+    df_list = c(csv_list, tsv_list)
+
+    filenames = c(tools::file_path_sans_ext(basename(paths)))
     # Warning: column names ‘count.x’, ‘count.y’ are duplicated in the result
     # See: https://stackoverflow.com/questions/38603668/suppress-any-emission-of-a-particular-warning-message
     withCallingHandlers({
-        all_reads <- Reduce(
+        all_data <- Reduce(
             function(...) merge(..., by=index_cols),
             lapply(df_list, "[", c(index_cols, value_cols))
         )
@@ -164,11 +187,11 @@ join_many_csv <- function(dir_path, index_cols, value_cols, ext='csv', recursive
     })
     
     # rename columns
-    colnames(all_reads) = c(
+    colnames(all_data) = c(
         index_cols,  # index_cols
         as.list(outer(value_cols, filenames, paste, sep='-'))  # suffix value_cols with filename
     )
-    return(all_reads)
+    return(all_data)
 }
 
 
@@ -193,3 +216,17 @@ coalesce1 <- function(...) {
     }
     ans
 }
+
+
+#'
+read_csv_or_tsv <- function(file, header=TRUE, sep=',', check_names=FALSE) {
+    ext = tools::file_ext(file)
+    if (ext == 'tsv') {
+        sep='\t'
+    }
+
+    data = read.csv(file, header=header, sep=sep, check.names=check_names)
+    return(data)
+}
+
+
