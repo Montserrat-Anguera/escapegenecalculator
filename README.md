@@ -22,7 +22,7 @@ The XCI escape gene analysis performed for mouse AT2 cells in PMID: 36638790 uti
 
 ## Installation
 
-Run the following in your R console. My machine is on R 4.3.0, but I believe any version should work fine, as I'm only using Base R and nothing fancy.
+Run the following in your R console. We have used R 4.3.0 with success, and any version should work fine.
 
 ```R
 install.packages("devtools") # warning: takes a long time!
