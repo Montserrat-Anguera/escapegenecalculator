@@ -17,7 +17,7 @@ We have made some modifications to the code which are important to note:
 
 These modifications are now included in the present version of this code.
 
-The X-escape gene analysis performed in Sierra et al. utilized our original version of this analytic pipeline prior to the incorporation of these changes present in this version available here on GitHub. Accordingly, a smaller number of total escape genes would be identified falling below the statistical cutoff.
+The XCI escape gene analysis performed for mouse AT2 cells in PMID: 36638790 utilized our original version of this analytic pipeline prior to the incorporation of these changes present in this version available here on GitHub. Accordingly, a smaller number of total escape genes would be identified falling below the statistical cutoff than what was listed in the publication.
 
 
 ## Installation
