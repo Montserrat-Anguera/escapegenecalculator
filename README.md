@@ -1,6 +1,6 @@
 ## Introduction
 
-The purpose of this R repository is to calculate escape genes. Implementation is based on a paper by Joel Berletch et al.:
+Welcome! The purpose of this R repository is to calculate escape genes. Implementation is based on a paper by Joel Berletch et al.:
 
 ```
 Berletch JB, Ma W, Yang F, Shendure J, Noble WS, Disteche CM, et al. (2015)
