@@ -17,7 +17,7 @@ We have made some modifications to the code which are important to note:
 
 These modifications are now included in the present version of this code.
 
-The XCI escape gene analysis performed for mouse AT2 cells in PMID: 36638790 utilized our original version of this analytic pipeline prior to the incorporation of these changes present in this version available here on GitHub. Accordingly, a smaller number of total escape genes would be identified falling below the statistical cutoff than what was listed in the publication.
+The XCI escape gene analysis performed for mouse AT2 cells in PMID: [36638790](https://pubmed.ncbi.nlm.nih.gov/36638790) utilized our original version of this analytic pipeline prior to the incorporation of these changes present in this version available here on GitHub. Accordingly, a smaller number of total escape genes would be identified falling below the statistical cutoff than what was listed in the publication.
 
 
 ## Installation
@@ -41,10 +41,7 @@ BiocManager::install("GenomicFeatures")
 
 # documentation only:
 devtools::create("~/path/to/escapegenecalculator")
-devtools::document("~/path/to/escapegenecalculator")
-
-# Warning! Do not install this as a library, it will run through all scripts
-# install.packages("~/github/R/escapegenecalculator", repos=NULL, type='source')  
+devtools::document("~/path/to/escapegenecalculator") 
 ```
 
 
@@ -55,11 +52,9 @@ Check the README files for what to download for each folder.
 
 
 
-## Use
+## Getting Started
 
-All the combinations are listed here for your convenience.
-
-Preprocessing
+Preprocessing:
 
 ```bash
 cd path/to/escapegenecalculator
@@ -77,7 +72,7 @@ cd path/to/escapegenecalculator
 # data/berletch-spleen
 Rscript R/generate_config.R -i data/berletch-spleen -o output-1
 Rscript R/escapegenecalculator_old.R -i data/berletch-spleen
-
+```
 
 New pipeline (output in `output-2`):
 
@@ -87,7 +82,8 @@ cd path/to/escapegenecalculator
 # data/berletch-spleen
 Rscript R/generate_config.R -i data/berletch-spleen -o output-2 # default
 Rscript R/escapegenecalculator.R -i data/berletch-spleen
+```
 
 ## Contributing
 
-Reach out to harrison.c.wang@gmail.com and we can set up a time to discuss. You could also make your own github branch or file a github issue.
+Reach out to [harrison.c.wang@gmail.com](mailto:harrison.c.wang@gmail.com) and we can set up a time to discuss. You may also make your own branch or file a Github issue.
