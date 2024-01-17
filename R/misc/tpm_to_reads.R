@@ -1,44 +1,65 @@
 ## Merges gene_name into tpm outputs using the data in exon_lengths
 
-library(logr)
-wd = dirname(this.path::here())
-source(file.path(wd, "R", "utils.R"))
-save=TRUE
+wd = dirname(dirname(this.path::here()))  # wd = '~/github/R/escapegenecalculator'
+library('optparse')
+library('logr')
+import::from(file.path(wd, 'R', 'tools', 'file_io.R'),
+    'list_files', .character_only=TRUE)
 
 
-# Input parameters
-in_dir = file.path(wd, "data", "tpm_output")
-out_dir = file.path(wd, "data", "read_counts", "raw")
+# ----------------------------------------------------------------------
+# Pre-script settings
 
-ref_dir = file.path(wd, "data", "ref")
-exon_lengths_filepath = file.path(ref_dir, "exon_lengths-Mus_musculus.csv")
+# args
+option_list = list(
 
+    make_option(c("-i", "--input-dir"), default="data/tpm_output",
+                metavar="data/tpm_output", type="character",
+                help="set the input directory"),
 
-# create out_dir
-if (save) {
-    if (!file.exists(out_dir)) {
-        dir.create(out_dir)
-    }
-}
+    make_option(c("-o", "--output-dir"), default="data/read_counts/raw",
+                metavar="data/read_counts/raw", type="character",
+                help="set the output directory"),
+
+    make_option(c("-o", "--ref-dir"), default="ref",
+                metavar="ref", type="character",
+                help="set the reference directory"),
+
+    make_option(c("-t", "--troubleshooting"), default=FALSE, action="store_true",
+                metavar="FALSE", type="logical",
+                help="enable if troubleshooting to prevent overwriting your files")
+)
+opt_parser = OptionParser(option_list=option_list)
+opt = parse_args(opt_parser)
+troubleshooting <- opt[['troubleshooting']]
+
+in_dir = file.path(wd, opt[['input-dir']])
+out_dir = file.path(wd, opt[['output-dir']])
+ref_dir = file.path(wd, opt[['ref-dir']])
+
 
 # Start Log
 start_time = Sys.time()
-log <- log_open(paste("tpm_to_reads ", start_time, '.log', sep=''))
+log <- log_open(paste0("tpm_to_reads-",
+                       strftime(start_time, format="%Y%m%d_%H%M%S"), '.log'))
 log_print(paste('Start ', start_time))
-if (save) {
+
+if (!troubleshooting) {
     log_print(paste('input dir: ', in_dir))
     log_print(paste('output dir: ', out_dir))
     log_print(paste('exon_lengths filepath: ', exon_lengths_filepath))
 } else {
-    log_print(paste('save: ', save))
+    log_print(paste('troubleshooting: ', troubleshooting))
 }
 
 
-
 # ----------------------------------------------------------------------
-# Read Data
+# Convert TPM to Reads
 
-exon_lengths <- read.csv(exon_lengths_filepath, na.string="NA", stringsAsFactors=FALSE)
+exon_lengths <- read.csv(
+    file.path(ref_dir, "exon_lengths-Mus_musculus.csv"),
+    na.string="NA", stringsAsFactors=FALSE
+)
 
 files = list_files(in_dir, ext='out')
 for (file in files) {
@@ -61,10 +82,15 @@ for (file in files) {
     df <- df[c("gene_id", "gene_name", items_in_a_not_b(colnames(df), c("gene_id", "gene_name")))]
     subset = c("gene_id", "gene_name", "reads")
 
-    # write to file
-    filename = tools::file_path_sans_ext(basename(file))
-    if (save) {
+    # save
+    if (!troubleshooting) {
         log_print(paste('Writing file: ', filename, '.csv', sep=''))
+
+        if (!file.exists(out_dir)) {
+            dir.create(out_dir)
+        }
+
+        filename = tools::file_path_sans_ext(basename(file))
         write.table(
             df[subset],
             file = file.path(out_dir, paste(filename, '.csv', sep='')),
@@ -73,3 +99,8 @@ for (file in files) {
         )
     }
 }
+
+end_time = Sys.time()
+log_print(paste('Script ended at:', Sys.time()))
+log_print(paste("Script completed in:", difftime(end_time, start_time)))
+log_close()

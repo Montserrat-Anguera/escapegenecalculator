@@ -5,7 +5,6 @@ import::here(tidyr, 'pivot_wider')
 ## most_frequent_item
 ## pivot
 ## reset_index
-## coalesce1
 
 
 #' Filter dataframe column by list
@@ -105,20 +104,4 @@ reset_index <- function(df, index_name='index') {
     rownames(df) <- 1:nrow(df)
     colnames(df)[colnames(df) == "index"] = index_name
     return (df)
-}
-
-
-#' Coalesce
-#' 
-#' @references
-#' \href{https://stackoverflow.com/questions/19253820/how-to-implement-coalesce-efficiently-in-r}{StackOverflow post}
-#' 
-#' @export
-coalesce1 <- function(...) {
-    ans <- ..1
-    for (elt in list(...)[-1]) {
-        i <- is.na(ans)
-        ans[i] <- elt[i]
-    }
-    ans
 }

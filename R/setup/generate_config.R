@@ -1,6 +1,6 @@
+## Helps you setup a config file.
 ## The goal of this script is to eliminate the dependency of escapegenecalculator on
-## using filenames to store metadata
-
+## using filenames to store metadata.
 
 wd = dirname(dirname(this.path::here()))  # wd = '~/github/R/escapegenecalculator'
 library('optparse')
@@ -24,27 +24,25 @@ option_list = list(
                 help="data will be output in this folder inside the input-dir"),
 
     make_option(c("-m", "--mat-mouse-strain"), default="Mus_musculus",
-                metavar="Mus_musculus", type="character", help="set the maternal mouse strain"),
+                metavar="Mus_musculus", type="character",
+                help="set the maternal mouse strain"),
 
     make_option(c("-p", "--pat-mouse-strain"), default="Mus_spretus",
                 metavar="Mus_spretus", type="character",
                 help="set the paternal mouse strain"),
 
-    make_option(c("-s", "--save"), default=TRUE, action="store_false",
-                metavar="TRUE", type="logical",
-                help="disable if you're troubleshooting and don't want to overwrite your files")
+    make_option(c("-t", "--troubleshooting"), default=FALSE, action="store_true",
+                metavar="FALSE", type="logical",
+                help="enable if troubleshooting to prevent overwriting your files")
 )
 opt_parser = OptionParser(option_list=option_list)
 opt = parse_args(opt_parser)
+troubleshooting = opt[['troubleshooting']]
 
-
-# for readability downstream
-in_dir = file.path(wd, opt['input-dir'][[1]])
-out_dir = file.path(in_dir, opt['output-dir'][[1]])
-mat_mouse_strain = opt['mat-mouse-strain'][[1]]
-pat_mouse_strain = opt['pat-mouse-strain'][[1]]
-save = opt['save'][[1]]
-
+in_dir = file.path(wd, opt[['input-dir']])
+out_dir = file.path(in_dir, opt[['output-dir']])
+mat_mouse_strain = opt[['mat-mouse-strain']]
+pat_mouse_strain = opt[['pat-mouse-strain']]
 
 # required defaults
 mat_reads_dir = file.path(in_dir, "input", "mat_reads")
@@ -55,13 +53,14 @@ default_mouse_gender = "female"
 
 # Start Log
 start_time = Sys.time()
-log <- log_open(paste("generate_config ", start_time, '.log', sep=''))
+log <- log_open(paste0("generate_config-",
+                       strftime(start_time, format="%Y%m%d_%H%M%S"), '.log'))
 log_print(paste('Script started at:', start_time))
-if (save==TRUE) {
+if (!troubleshooting) {
     log_print(paste(Sys.time(), 'in_dir:', in_dir))
     log_print(paste(Sys.time(), 'out_dir:', out_dir))
 } else {
-    log_print(paste(Sys.time(), 'save:', save))
+    log_print(paste(Sys.time(), 'troubleshooting:', troubleshooting))
 }
 
 
@@ -97,8 +96,8 @@ df['mat_mouse_strain'] = mat_mouse_strain
 df['pat_mouse_strain'] = pat_mouse_strain
 
 
-# save data
-if (save==TRUE) {
+# save
+if (!troubleshooting) {
 
     log_print(paste(Sys.time(), "Writing data..."))
 
@@ -115,3 +114,8 @@ if (save==TRUE) {
 
     log_print(paste(Sys.time(), "Remember to check the config file before using!"))
 }
+
+end_time = Sys.time()
+log_print(paste('Script ended at:', Sys.time()))
+log_print(paste("Script completed in:", difftime(end_time, start_time)))
+log_close()

@@ -1,24 +1,28 @@
+import::here(file.path(wd, 'R', 'tools', 'file_io.R'),
+    'join_many_csv', 'read_csv_or_tsv', .character_only=TRUE)
+import::here(file.path(wd, 'R', 'tools', 'list_tools.R'),
+    'items_in_a_not_b', .character_only=TRUE)
+
 ## Functions
-## get_reads
+## get_single_reads
+## get_merged_reads
 ## concat_reads
 
 
 #' Convenience function
 #' 
-get_reads <- function(
+get_single_reads <- function(
     reads_filename,
     chromosomal_parentage='mat',
     mouse_strain='Mus_musculus'
 ) {
-    if (!is.null(mouse_strain)) { mouse_strain="Mus_musculus" }  # default option
-
     reads_file = file.path(in_dir, paste(chromosomal_parentage, "_reads", sep=''), reads_filename)
     reads = read_csv_or_tsv(reads_file)
 
     exon_lengths_file = file.path(wd, "ref", paste("exon_lengths-", mouse_strain, ".csv", sep=''))
     if (!file.exists(exon_lengths_file)) { return(reads) }
-
     exon_lengths = read.csv(exon_lengths_file, header=TRUE, check.names=FALSE)
+    
     reads = merge(
         reads,
         exon_lengths[c('gene_name', 'exon_length')],  # do we need 'gene_id'?
@@ -26,6 +30,35 @@ get_reads <- function(
         all.x=TRUE, all.y=FALSE
         # na_matches = 'never'  # do not include null values
     )
+    return(reads)
+}
+
+
+#' Convenience function to only read relevant rows into memory
+#'
+get_merged_reads <- function(reads_dir, config, chromosome_parentage='mat') {
+
+    index_cols_ = c('gene_id', 'gene_name', 'chromosome')
+    value_cols_ = 'count'
+    reads <- join_many_csv(reads_dir, index_cols=index_cols_, value_cols=value_cols_)
+
+    colnames(reads) = c(
+        index_cols_,
+        paste0('count', '-', chromosome_parentage, '-', config[['mouse_id']])
+    )
+
+    # standardize columns
+    colnames(reads) <- tolower(colnames(reads))
+    colnames(reads) <- lapply(
+      colnames(reads),
+      function(x) {
+        step1 <- gsub('-', '_', x)  # convert mixed_case-col_names to fully snake_case
+        step2 <- gsub('^chr_', 'chromosome_', step1)
+        step3 <- gsub('^count_', 'num_reads_', step2)
+        step4 <- gsub('^reads_', 'num_reads_', step3)
+        return (step4)}
+    )
+
     return(reads)
 }
 
@@ -46,7 +79,7 @@ concat_reads <- function(
         names(reads_for_mouse_id)
     )
 
-    # instantiate the following dataframe
+    # example dataframe
     # +----------+-----------------+
     # | mouse_id | total_reads_mat |
     # +----------+-----------------+
@@ -69,4 +102,3 @@ concat_reads <- function(
     )
     return(df)
 }
-

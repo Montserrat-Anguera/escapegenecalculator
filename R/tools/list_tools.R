@@ -1,16 +1,6 @@
 ## Functions
-## dict
 ## filter_list_for_match
 ## items_in_a_not_b
-
-
-#' Dictionary
-#' 
-#' @description instantiate a named list. I am aware this is not a real dictionary, this method will be updated in the future.
-#'
-dict <- function(keys, values) {
-    return(setNames(values, keys))
-}
 
 
 #' Find matches based on substring

@@ -4,15 +4,13 @@
 wd = dirname(this.path::here())  # wd = '~/github/R/escapegenecalculator'
 library('optparse')
 library('logr')
-import::from(file.path(wd, 'R', 'tools', 'file_io.R'),
-    'join_many_csv', .character_only=TRUE)
 import::from(file.path(wd, 'R', 'tools', 'list_tools.R'),
-    'dict', 'filter_list_for_match', 'items_in_a_not_b', .character_only=TRUE)
+    'filter_list_for_match', 'items_in_a_not_b', .character_only=TRUE)
 import::from(file.path(wd, 'R', 'tools', 'df_tools.R'),
     'filter_dataframe_column_by_list', 'most_frequent_item',
     'pivot', 'reset_index', .character_only=TRUE)
 import::from(file.path(wd, 'R', 'functions', 'preprocessing.R'),
-    'concat_reads', .character_only=TRUE)
+    'get_merged_reads', 'concat_reads', .character_only=TRUE)
 
 
 # ----------------------------------------------------------------------
@@ -64,48 +62,6 @@ if (!troubleshooting) {
 }
 
 
-#' Convenience function to only read relevant rows into memory
-#'
-get_reads <- function(reads_dir, config, chromosome_parentage='mat') {
-
-    index_cols_ = c('gene_id', 'gene_name', 'chromosome')
-    value_cols_ = 'count'
-    reads <- join_many_csv(reads_dir, index_cols=index_cols_, value_cols=value_cols_)
-
-    # rename columns
-    mouse_id_for_filename = dict(
-        keys=lapply(config[paste(chromosome_parentage, '_reads_filenames', sep='')],
-                    tools::file_path_sans_ext
-                    )[[1]],
-        values=config['mouse_id'][[1]]
-    )
-
-    value_cols = items_in_a_not_b(colnames(reads), index_cols_)
-    colnames(reads) = c(
-        index_cols_,
-        # renamed value cols
-        paste('count', '-', chromosome_parentage, '-',
-              unlist(mouse_id_for_filename[gsub('count-', '', value_cols)]),
-              sep=''
-        )
-
-    )
-
-    # standardize columns
-    colnames(reads) <- tolower(colnames(reads))
-    colnames(reads) <- lapply(
-      colnames(reads),
-      function(x) {
-        step1 <- gsub('-', '_', x)  # convert mixed_case-col_names to fully snake_case
-        step2 <- gsub('^chr_', 'chromosome_', step1)
-        step3 <- gsub('^count_', 'num_reads_', step2)
-        step4 <- gsub('^reads_', 'num_reads_', step3)
-        return (step4)}
-    )
-
-    return(reads)
-}
-
 
 # ----------------------------------------------------------------------
 # Set config
@@ -125,11 +81,11 @@ if (file.exists(config_file)) {
 log_print(paste(Sys.time(), 'Merging data...'))
 
 # read in files specified in the config file
-mat_reads = get_reads(
+mat_reads = get_merged_reads(
     file.path(in_dir, "mat_reads", config[, 'mat_reads_filenames']),
     config, chromosome_parentage='mat'
 )
-pat_reads = get_reads(
+pat_reads = get_merged_reads(
     file.path(in_dir, "pat_reads", config[, 'pat_reads_filenames']),
     config, chromosome_parentage='pat'
 )

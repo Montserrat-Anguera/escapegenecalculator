@@ -1,43 +1,58 @@
-## Merges gene_name into tpm outputs using the data in exon_lengths
+## Diagnostic plot to check srpm.csv file
 
-library(logr)
-library(reshape)
-library(ggplot2)
-wd = dirname(this.path::here())
-source(file.path(wd, "R", "utils.R"))
-save=TRUE
+wd = dirname(dirname(this.path::here()))  # wd = '~/github/R/escapegenecalculator'
+library('ggplot2')
+library('optparse')
+library('logr')
+import::from(reshape, 'melt')
+import::from(file.path(wd, 'R', 'tools', 'list_tools.R'),
+    'filter_list_for_match', 'items_in_a_not_b', .character_only=TRUE)
 
 
-# Input parameters
-in_dir = file.path(wd, "data")
+# ----------------------------------------------------------------------
+# Pre-script settings
+
+# args
+option_list = list(
+    make_option(c("-i", "--input-file"), default="data/srpm.csv",
+                metavar="data/srpm.csv", type="character",
+                help="set the input file"),
+
+    make_option(c("-o", "--output-dir"), default="figures",
+                metavar="figures", type="character",
+                help="set the output directory"),
+
+    make_option(c("-t", "--troubleshooting"), default=FALSE, action="store_true",
+                metavar="FALSE", type="logical",
+                help="enable if troubleshooting to prevent overwriting your files")
+)
+opt_parser = OptionParser(option_list=option_list)
+opt = parse_args(opt_parser)
+troubleshooting <- opt[['troubleshooting']]
 out_dir = file.path(wd, "figures")
-input_filepath = file.path(in_dir, "srpm.csv")
 field = 'srpm'
 
-# create out_dir
-if (save) {
-    if (!file.exists(out_dir)) {
-        dir.create(out_dir)
-    }
-}
 
 # Start Log
 start_time = Sys.time()
-log <- log_open(paste("plot_violin ", start_time, '.log', sep=''))
+log <- log_open(paste0("plot_violin-",
+                       strftime(start_time, format="%Y%m%d_%H%M%S"), '.log'))
 log_print(paste('Start ', start_time))
-if (save) {
-    log_print(paste('input file: ', input_filepath))
+if (troubleshooting) {
+    log_print(paste('input file: ', opt[['input-file']]))
     log_print(paste('output dir: ', out_dir))
 } else {
-    log_print(paste('save: ', save))
+    log_print(paste('troubleshooting: ', troubleshooting))
 }
 
 
 # ----------------------------------------------------------------------
 # Read Data
 
-
-raw_data <- read.csv(input_filepath, na.string="NA", stringsAsFactors=FALSE)
+raw_data <- read.csv(
+    file.path(wd, opt[['input-file']]),
+    na.string="NA", stringsAsFactors=FALSE
+)
 
 # rename columns
 orig_cols = filter_list_for_match(colnames(raw_data), pattern=field)
@@ -49,7 +64,6 @@ colnames(raw_data) <- c(index_cols, new_cols)
 # unpivot to long format
 df <- melt(raw_data[, c('gene_name', new_cols)], id = c("gene_name"))
 colnames(df) = c('gene_name', 'sample_id', field)
-
 
 plot <- ggplot(df) +
     aes_string(x='sample_id', y=field, fill='sample_id') +
@@ -68,7 +82,11 @@ plot <- ggplot(df) +
     ) +
     ylim(0, 10)  # modify this if necessary
 
-if (save) {
+if (!troubleshooting) {
+    if (!file.exists(out_dir)) {
+        dir.create(out_dir)
+    }
+
     log_print('saving figure...')
     ggsave(
         file.path(out_dir, paste(field, '.png', sep='')),
@@ -80,3 +98,8 @@ if (save) {
         plot = plot
     )
 }
+
+end_time = Sys.time()
+log_print(paste('Script ended at:', Sys.time()))
+log_print(paste("Script completed in:", difftime(end_time, start_time)))
+log_close()

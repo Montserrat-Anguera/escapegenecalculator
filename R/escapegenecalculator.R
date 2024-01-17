@@ -2,6 +2,7 @@
 ## It takes SNP-specific mapped read counts as input,
 ## normalizes, computes confidence intervals, then outputs a list of escape genes.
 ## 
+## Usage:
 ## Rscript R/escapegenecalculator.R -i data/berletch-spleen
 
 wd = dirname(this.path::here())  # wd = '~/github/R/escapegenecalculator'
@@ -12,7 +13,7 @@ import::from(file.path(wd, 'R', 'tools', 'file_io.R'),
 import::from(file.path(wd, 'R', 'tools', 'list_tools.R'),
     'items_in_a_not_b', .character_only=TRUE)
 import::from(file.path(wd, 'R', 'functions', 'preprocessing.R'),
-    'get_reads', .character_only=TRUE)
+    'get_single_reads', .character_only=TRUE)
 import::from(file.path(wd, 'R', 'configs', 'columns.R'),
     'escape_gene_cols', 'x_read_output_cols', .character_only=TRUE)
 
@@ -121,13 +122,13 @@ for (mouse_id in mouse_ids) {
     # Read in raw data
 
     # get reads and merge exon lengths
-    mat_reads = get_reads(
+    mat_reads = get_single_reads(
         mat_reads_filename,
         chromosomal_parentage='mat',
         mouse_strain=mat_mouse_strain
     )
     
-    pat_reads = get_reads(
+    pat_reads = get_single_reads(
         pat_reads_filename,
         chromosomal_parentage='pat',
         mouse_strain=mat_mouse_strain
