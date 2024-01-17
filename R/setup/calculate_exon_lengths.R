@@ -8,8 +8,9 @@
 ## 7. Do for both genomes.
 
 wd = dirname(dirname(this.path::here()))  # wd = '~/github/R/escapegenecalculator'
-library('logr')
 library('GenomicFeatures')
+library('optparse')
+library('logr')
 
 
 # ----------------------------------------------------------------------
@@ -38,6 +39,7 @@ troubleshooting = opt[['troubleshooting']]
 
 input_file = file.path(wd, opt[['input-file']])
 species = strsplit(basename(input_file), split = ".", fixed=TRUE)[[1]][1]
+out_dir = file.path(wd, opt[['output-dir']])
 out_filename = paste("exon_lengths-", species, ".csv", sep='')
 
 
@@ -45,7 +47,7 @@ out_filename = paste("exon_lengths-", species, ".csv", sep='')
 start_time = Sys.time()
 log <- log_open(paste0("calculate_exon_lengths-",
                        strftime(start_time, format="%Y%m%d_%H%M%S"), '.log'))
-log_print(paste('input file: ', file.path(in_dir, in_filename)))
+log_print(paste('input file: ', input_file))
 log_print(paste('output file: ', file.path(out_dir, out_filename)))
 
 

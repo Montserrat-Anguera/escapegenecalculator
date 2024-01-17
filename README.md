@@ -49,14 +49,14 @@ Check the README files for what to download for each folder.
 
 ## Getting Started
 
-Preprocessing:
+Setup:
 
 ```bash
 cd path/to/escapegenecalculator
 
 # Optional, since the output of these have already been generated for you
-Rscript R/calculate_exon_lengths.R  # ~1 minute
-Rscript R/extract_chromosome_lengths.R  # ~5 minutes
+Rscript R/setup/calculate_exon_lengths.R  # ~1 minute
+Rscript R/setup/extract_chromosome_lengths.R  # ~5 minutes
 ```
 
 Old pipeline (output in `output-1`):

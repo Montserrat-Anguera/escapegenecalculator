@@ -2,7 +2,7 @@
 ## Duplicates will cause errors with merging many files and break escapegenecalculator_old.R
 
 wd = dirname(dirname(this.path::here()))  # wd = '~/github/R/escapegenecalculator'
-
+library('optparse')
 library('logr')
 import::from(file.path(wd, 'R', 'tools', 'file_io.R'),
     'list_files', .character_only=TRUE)

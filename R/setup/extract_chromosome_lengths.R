@@ -2,8 +2,9 @@
 ## Takes 4-5 minutes to run on Ubuntu 20.04 with 32G RAM.
 
 wd = dirname(dirname(this.path::here()))  # wd = '~/github/R/escapegenecalculator'
-library('logr')
 library('seqinr')
+library('optparse')
+library('logr')
 
 
 # ----------------------------------------------------------------------
@@ -39,7 +40,7 @@ output_filename = paste("chr_lengths-", species, ".csv", sep='')
 start_time = Sys.time()
 log <- log_open(paste0("extract_chromosome_lengths-",
                        strftime(start_time, format="%Y%m%d_%H%M%S"), '.log'))
-log_print(paste('input file: ', input_file)
+log_print(paste('input file: ', input_file))
 log_print(paste('output file: ', file.path(out_dir, output_filename)))
 
 
@@ -51,7 +52,7 @@ log_print(paste('output file: ', file.path(out_dir, output_filename)))
 io_start_time = Sys.time()
 log_print(paste('reading fasta file...', io_start_time))
 
-fasta_file <- read.fasta(file.path(in_dir, in_filename))
+fasta_file <- read.fasta(input_file)
 
 io_end_time = Sys.time()
 log_print(paste('opened.', io_end_time))
