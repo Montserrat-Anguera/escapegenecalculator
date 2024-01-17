@@ -2,47 +2,40 @@
 ## using filenames to store metadata
 
 
-wd = dirname(this.path::here())  # wd = '~/github/R/escapegenecalculator'
+wd = dirname(dirname(this.path::here()))  # wd = '~/github/R/escapegenecalculator'
 library('optparse')
 library('logr')
-source(file.path(wd, 'R', 'utils.R'))
-
-
-# args
-option_list = list(
-
-    make_option(c("-i", "--input-dir"), default="data/berletch-spleen", metavar="data/berletch-spleen",
-                type="character", help="set the base directory"),
-
-    make_option(c("-o", "--output-dir"), default="output-2", metavar="output-2",
-                type="character", help="data will be output in this folder inside the input-dir"),
-
-    make_option(c("-m", "--mat-mouse-strain"), default="Mus_musculus", metavar="Mus_musculus",
-                type="character", help="set the maternal mouse strain"),
-
-    make_option(c("-p", "--pat-mouse-strain"), default="Mus_musculus_casteij", metavar="Mus_musculus_casteij",
-                type="character", help="set the paternal mouse strain"),
-
-    make_option(c("-s", "--save"), default=TRUE, action="store_false", metavar="TRUE",
-                type="logical", help="disable if you're troubleshooting and don't want to overwrite your files")
-
-)
-
-opt_parser = OptionParser(option_list=option_list)
-opt = parse_args(opt_parser)
-
-
-# for troubleshooting
-# opt <- list(
-#     "input-dir" = "data/berletch-spleen",
-#     "output-dir" = "output-2",
-#     "mat-mouse-strain" = "Mus_musculus",
-#     "pat-mouse-strain" = "Mus_musculus_casteij",
-# )
+import::from(file.path(wd, 'R', 'tools', 'file_io.R'),
+    'list_files', .character_only=TRUE)
 
 
 # ----------------------------------------------------------------------
 # Pre-script settings
+
+# args
+option_list = list(
+
+    make_option(c("-i", "--input-dir"), default="data/berletch-spleen",
+                metavar="data/berletch-spleen", type="character",
+                help="set the base directory"),
+
+    make_option(c("-o", "--output-dir"), default="output-2",
+                metavar="output-2", type="character",
+                help="data will be output in this folder inside the input-dir"),
+
+    make_option(c("-m", "--mat-mouse-strain"), default="Mus_musculus",
+                metavar="Mus_musculus", type="character", help="set the maternal mouse strain"),
+
+    make_option(c("-p", "--pat-mouse-strain"), default="Mus_spretus",
+                metavar="Mus_spretus", type="character",
+                help="set the paternal mouse strain"),
+
+    make_option(c("-s", "--save"), default=TRUE, action="store_false",
+                metavar="TRUE", type="logical",
+                help="disable if you're troubleshooting and don't want to overwrite your files")
+)
+opt_parser = OptionParser(option_list=option_list)
+opt = parse_args(opt_parser)
 
 
 # for readability downstream
@@ -74,7 +67,6 @@ if (save==TRUE) {
 
 # ----------------------------------------------------------------------
 # Generate Config File
-
 
 mat_reads_files = list_files(mat_reads_dir, recursive=FALSE, full_name=FALSE)
 pat_reads_files = list_files(pat_reads_dir, recursive=FALSE, full_name=FALSE)

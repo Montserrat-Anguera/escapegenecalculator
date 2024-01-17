@@ -1,11 +1,30 @@
-## Columns
+## Objects
+## escape_gene_cols
+## x_read_output_cols
 
 
-# Objects
-# # x_read_output_cols
-# # escape_gene_cols
+#' Escape Gene Columns
+#' 
+#' @description Shortlist for easy comparison
+#' 
+escape_gene_cols = c(
+    'mouse_id',
+    'gene_name',
+    'num_reads_mat',
+    'num_reads_pat',
+    'ratio_xi_over_xa',
+    'lower_confidence_interval',
+    'upper_confidence_interval',
+    'srpm_mat',
+    'srpm_pat',
+    'rpkm'
+)
 
 
+#' Output columns
+#' 
+#' @description Set the column order
+#' 
 x_read_output_cols = c(
     'mouse_id',
     # 'chromosome_mat',  # always X in this format
@@ -37,19 +56,4 @@ x_read_output_cols = c(
     'xi_srpm_gte_2',
     'rpkm_gt_1',
     'lower_ci_gt_0'
-)
-
-
-# shortlist for easy comparison
-escape_gene_cols = c(
-    'mouse_id',
-    'gene_name',
-    'num_reads_mat',
-    'num_reads_pat',
-    'ratio_xi_over_xa',
-    'lower_confidence_interval',
-    'upper_confidence_interval',
-    'srpm_mat',
-    'srpm_pat',
-    'rpkm'
 )

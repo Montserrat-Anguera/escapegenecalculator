@@ -1,97 +1,79 @@
 ## This pipeline is based on Berletch and Disteche's 2015 paper on XCI escape in mouse tissues
 ## It takes SNP-specific mapped read counts as input,
 ## normalizes, computes confidence intervals, then outputs a list of escape genes.
-
+## 
 ## Rscript R/escapegenecalculator.R -i data/berletch-spleen
-
 
 wd = dirname(this.path::here())  # wd = '~/github/R/escapegenecalculator'
 library('optparse')
 library('logr')
-source(file.path(wd, 'R', 'columns.R'))
-source(file.path(wd, 'R', 'utils.R'))
-
-
-# args
-option_list = list(
-
-    make_option(c("-i", "--input-dir"), default="data/berletch-spleen", metavar="data/berletch-spleen",
-                type="character", help="set the directory"),
-
-    make_option(c("-o", "--output-subdir"), default="output-2", metavar="output-2",
-                type="character", help="useful for running multiple scripts on the same dataset"),
-
-    make_option(c("-z", "--zscore-threshold"), default=0.99, metavar="0.99",
-                type="double", help="was 0.975 in Zack's version, but Berletch's paper requires 0.99"),
-
-    make_option(c("-s", "--save"), default=TRUE, action="store_false", metavar="TRUE",
-                type="logical", help="disable if you're troubleshooting and don't want to overwrite your files")
-    
-)
-
-opt_parser = OptionParser(option_list=option_list)
-opt = parse_args(opt_parser)
+import::from(file.path(wd, 'R', 'tools', 'file_io.R'),
+    'read_csv_or_tsv', .character_only=TRUE)
+import::from(file.path(wd, 'R', 'tools', 'list_tools.R'),
+    'items_in_a_not_b', .character_only=TRUE)
+import::from(file.path(wd, 'R', 'functions', 'preprocessing.R'),
+    'get_reads', .character_only=TRUE)
+import::from(file.path(wd, 'R', 'configs', 'columns.R'),
+    'escape_gene_cols', 'x_read_output_cols', .character_only=TRUE)
 
 
 # ----------------------------------------------------------------------
 # Pre-script settings
 
+# args
+option_list = list(
+
+    make_option(c("-i", "--input-dir"), default="data/berletch-spleen",
+                metavar="data/berletch-spleen", type="character",
+                help="set the directory"),
+
+    make_option(c("-o", "--output-subdir"), default="output-2",
+                metavar="output-2", type="character",
+                help="useful for running multiple scripts on the same dataset"),
+
+    make_option(c("-z", "--zscore-threshold"), default=0.99,
+                metavar="0.99", type="double",
+                help="was 0.975 in Zack's version, but Berletch's paper requires 0.99"),
+
+    make_option(c("-t", "--troubleshooting"), default=FALSE, action="store_true",
+                metavar="FALSE", type="logical",
+                help="enable if troubleshooting to prevent overwriting your files")
+)
+opt_parser = OptionParser(option_list=option_list)
+opt = parse_args(opt_parser)
+troubleshooting <- opt[['troubleshooting']]
 
 # for readability downstream
-base_dir = file.path(wd, opt['input-dir'][[1]])
+base_dir = file.path(wd, opt[['input-dir']])
 in_dir = file.path(base_dir, 'input')
-out_dir = file.path(base_dir, opt['output-subdir'][[1]])
-zscore = qnorm(opt['zscore-threshold'][[1]])  # 2.326 if zscore_threshold=0.99
-save = opt['save'][[1]]
-
+out_dir = file.path(base_dir, opt[['output-subdir']])
+zscore = qnorm(opt[['zscore-threshold']])  # 2.326 if zscore_threshold=0.99
 
 # optional commands
 gene_id_col='gene_id'  # could use 'locus' for Disteche's data
-
 
 # in case num_total_reads is unavailable, use this to estimate the num_total_reads
 # In Berletch's 2015 paper, they got 9258991 snp-specific reads from 88842032 total reads
 estimated_pct_snp_reads=0.104  # 9258991/88842032
 
 
-#' Convenience function
-get_reads <- function(reads_filename, chromosomal_parentage='mat', mouse_strain='Mus_musculus') {
-    if (!is.null(mouse_strain)) { mouse_strain="Mus_musculus" }  # default option
-
-    reads_file = file.path(in_dir, paste(chromosomal_parentage, "_reads", sep=''), reads_filename)
-    reads = read_csv_or_tsv(reads_file)
-
-    exon_lengths_file = file.path(wd, "ref", paste("exon_lengths-", mouse_strain, ".csv", sep=''))
-    if (!file.exists(exon_lengths_file)) { return(reads) }
-
-    exon_lengths = read.csv(exon_lengths_file, header=TRUE, check.names=FALSE)
-    reads = merge(
-        reads,
-        exon_lengths[c('gene_name', 'exon_length')],  # do we need 'gene_id'?
-        by='gene_name', suffixes=c('', '_'),
-        all.x=TRUE, all.y=FALSE
-        # na_matches = 'never'  # do not include null values
-    )
-    return(reads)
-}
-
-
 # Start Log
 start_time = Sys.time()
-log <- log_open(paste("escapegenecalculator ", start_time, '.log', sep=''))
+log <- log_open(paste0("escapegenecalculator-",
+                       strftime(start_time, format="%Y%m%d_%H%M%S"), '.log'))
 log_print(paste('Script started at:', start_time))
-if (save==TRUE) {
+if (!troubleshooting) {
     log_print(paste(Sys.time(), 'base_dir:', base_dir))
     log_print(paste(Sys.time(), 'in_dir:', in_dir))
     log_print(paste(Sys.time(), 'out_dir:', out_dir))
     log_print(paste(Sys.time(), 'zscore:', zscore))
 } else {
-    log_print(paste(Sys.time(), 'save:', save))
+    log_print(paste(Sys.time(), 'troubleshooting:', troubleshooting))
 }
 
 
 # ----------------------------------------------------------------------
-# Set config
+# Configuration Files
 
 
 config_file = file.path(out_dir, 'config.csv')
@@ -115,26 +97,24 @@ if (file.exists(metadata_file)) {
 
 log_print(paste(Sys.time(), "Number of files found:", nrow(config)))
 
-mouse_ids = config['mouse_id'][[1]]
+mouse_ids = config[['mouse_id']]
 for (mouse_id in mouse_ids) {
-    # mouse_id = mouse_ids[1]
+
+    loop_start_time =  Sys.time()
+    log_print(paste(loop_start_time, 'Loop started!'))
+
     row = (config['mouse_id']==mouse_id)
     if (sum(row) > 1) {
         stop("Mouse IDs must be unique!")
     }
 
+    mat_reads_filename = config[row, "mat_reads_filenames"]
+    pat_reads_filename = config[row, "pat_reads_filenames"]
+    rpkms_filename = config[row, "rpkms_filenames"]
 
-    loop_start_time =  Sys.time()
-    log_print(paste(loop_start_time, 'Loop started!'))
-
-    mat_reads_filename = config[row, "mat_reads_filenames"][[1]]
-    pat_reads_filename = config[row, "pat_reads_filenames"][[1]]
-    rpkms_filename = config[row, "rpkms_filenames"][[1]]
-
-    mouse_id = config[row, "mouse_id"][[1]]
-    mouse_gender = config[row, "mouse_gender"][[1]]
-    mat_mouse_strain = config[row, "mat_mouse_strain"][[1]]
-    pat_mouse_strain = config[row, "pat_mouse_strain"][[1]]
+    mouse_gender = config[row, "mouse_gender"]
+    mat_mouse_strain = config[row, "mat_mouse_strain"]
+    pat_mouse_strain = config[row, "pat_mouse_strain"]
 
 
     # ----------------------------------------------------------------------
@@ -310,8 +290,8 @@ for (mouse_id in mouse_ids) {
     # ----------------------------------------------------------------------
     # Save
 
-    # save data
-    if (save==TRUE) {
+    # save
+    if (!troubleshooting) {
 
         log_print(paste(Sys.time(), "Writing data..."))
 
@@ -353,7 +333,6 @@ for (mouse_id in mouse_ids) {
 
     loop_end_time = Sys.time()
     log_print(paste(Sys.time(), "Loop completed in:", difftime(loop_end_time, loop_start_time), '!'))
-
 }
 
 end_time = Sys.time()

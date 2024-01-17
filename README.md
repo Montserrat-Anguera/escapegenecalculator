@@ -38,10 +38,6 @@ install.packages("tidyr")
 install.packages("BiocManager")
 BiocManager::install("rtracklayer")  # this takes ~15 minutes
 BiocManager::install("GenomicFeatures")
-
-# documentation only:
-devtools::create("~/path/to/escapegenecalculator")
-devtools::document("~/path/to/escapegenecalculator") 
 ```
 
 
@@ -49,7 +45,6 @@ devtools::document("~/path/to/escapegenecalculator")
 ## Downloading Data
 
 Check the README files for what to download for each folder.
-
 
 
 ## Getting Started
@@ -70,7 +65,7 @@ Old pipeline (output in `output-1`):
 cd path/to/escapegenecalculator
 
 # data/berletch-spleen
-Rscript R/generate_config.R -i data/berletch-spleen -o output-1
+Rscript R/setup/generate_config.R -i data/berletch-spleen -o output-1
 Rscript R/escapegenecalculator_old.R -i data/berletch-spleen
 ```
 
@@ -80,7 +75,7 @@ New pipeline (output in `output-2`):
 cd path/to/escapegenecalculator
 
 # data/berletch-spleen
-Rscript R/generate_config.R -i data/berletch-spleen -o output-2 # default
+Rscript R/setup/generate_config.R -i data/berletch-spleen -o output-2  # default
 Rscript R/escapegenecalculator.R -i data/berletch-spleen
 ```
 
