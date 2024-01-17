@@ -1,0 +1,1 @@
+General-purpose functions that are applicable to any script.

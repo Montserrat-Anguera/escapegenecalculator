@@ -4,137 +4,63 @@
 wd = dirname(this.path::here())  # wd = '~/github/R/escapegenecalculator'
 library('optparse')
 library('logr')
-source(file.path(wd, 'R', 'utils.R'))
-
-
-# args
-option_list = list(
-
-    make_option(c("-i", "--input-dir"), default="data/berletch-spleen", metavar="data/berletch-spleen",
-                type="character", help="set the directory"),
-
-    make_option(c("-o", "--output-subdir"), default="output-1", metavar="output-1",
-                type="character", help="useful for running multiple scripts on the same dataset"),
-
-    make_option(c("-z", "--zscore-threshold"), default=0.975, metavar="0.975",
-                type="double", help="was 0.975 in Zack's version, but Berletch's paper requires 0.99"),
-    
-    make_option(c("-s", "--save"), default=TRUE, action="store_false", metavar="TRUE",
-                type="logical", help="disable if you're troubleshooting and don't want to overwrite your files")
-
-)
-opt_parser = OptionParser(option_list=option_list)
-opt = parse_args(opt_parser)
+import::from(file.path(wd, 'R', 'tools', 'list_tools.R'),
+    'filter_list_for_match', 'items_in_a_not_b', .character_only=TRUE)
+import::from(file.path(wd, 'R', 'tools', 'df_tools.R'),
+    'filter_dataframe_column_by_list', 'most_frequent_item',
+    'pivot', 'reset_index', .character_only=TRUE)
+import::from(file.path(wd, 'R', 'functions', 'preprocessing.R'),
+    'get_merged_reads', 'concat_reads', .character_only=TRUE)
 
 
 # ----------------------------------------------------------------------
 # Pre-script settings
 
+# args
+option_list = list(
+
+    make_option(c("-i", "--input-dir"), default="data/berletch-spleen",
+                metavar="data/berletch-spleen", type="character",
+                help="set the directory"),
+
+    make_option(c("-o", "--output-subdir"), default="output-1",
+                metavar="output-1", type="character",
+                help="useful for running multiple scripts on the same dataset"),
+
+    make_option(c("-z", "--zscore-threshold"), default=0.975,
+                metavar="0.975", type="double",
+                help="was 0.975 in Zack's version, but Berletch's paper requires 0.99"),
+    
+    make_option(c("-t", "--troubleshooting"), default=FALSE, action="store_true",
+                metavar="FALSE", type="logical",
+                help="enable if troubleshooting to prevent overwriting your files")
+)
+opt_parser = OptionParser(option_list=option_list)
+opt = parse_args(opt_parser)
+troubleshooting <- opt[['troubleshooting']]
+
 
 # for readability downstream
-base_dir = file.path(wd, opt['input-dir'][[1]])
+base_dir = file.path(wd, opt[['input-dir']])
 in_dir = file.path(base_dir, 'input')
-out_dir = file.path(base_dir, opt['output-subdir'][[1]])
-zscore = qnorm(opt['zscore-threshold'][[1]])  # 1.96 if zscore_threshold=0.975
-save = opt['save'][[1]]
-
-
-#' Convenience function to only read relevant rows into memory
-#'
-get_reads <- function(reads_dir, config, chromosome_parentage='mat') {
-
-    index_cols_ = c('gene_id', 'gene_name', 'chromosome')
-    value_cols_ = 'count'
-    reads <- join_many_csv(reads_dir, index_cols=index_cols_, value_cols=value_cols_)
-
-    # rename columns
-    mouse_id_for_filename = dict(
-        keys=lapply(config[paste(chromosome_parentage, '_reads_filenames', sep='')],
-                    tools::file_path_sans_ext
-                    )[[1]],
-        values=config['mouse_id'][[1]]
-    )
-
-    value_cols = items_in_a_not_b(colnames(reads), index_cols_)
-    colnames(reads) = c(
-        index_cols_,
-        # renamed value cols
-        paste('count', '-', chromosome_parentage, '-',
-              unlist(mouse_id_for_filename[gsub('count-', '', value_cols)]),
-              sep=''
-        )
-
-    )
-
-    # standardize columns
-    colnames(reads) <- tolower(colnames(reads))
-    colnames(reads) <- lapply(
-      colnames(reads),
-      function(x) {
-        step1 <- gsub('-', '_', x)  # convert mixed_case-col_names to fully snake_case
-        step2 <- gsub('^chr_', 'chromosome_', step1)
-        step3 <- gsub('^count_', 'num_reads_', step2)
-        step4 <- gsub('^reads_', 'num_reads_', step3)
-        return (step4)}
-    )
-
-    return(reads)
-}
-
-
-#' Convenience function to left join summed reads
-#'
-concat_reads <- function(
-        df, reads, cols,
-        new_colname="reads", chromosome_parentage="mat", prefix='num_reads_'
-    ) {
-
-    # sum the reads
-    reads_for_mouse_id = colSums(reads[cols])
-
-    # remove 'count-mat-' from 'count-mat-mouse_1'
-    names(reads_for_mouse_id) = gsub(
-        paste(prefix, chromosome_parentage, '_', sep=''), '',
-        names(reads_for_mouse_id)
-    )
-
-    # instantiate the following dataframe
-    # +----------+-----------------+
-    # | mouse_id | total_reads_mat |
-    # +----------+-----------------+
-    # | mouse_1  |      4773667    |
-    # | mouse_2  |      5222637    |
-    # | mouse_3  |      3279278    |
-    # +----------+-----------------+
-    reads_df = data.frame(
-        mouse_id = names(reads_for_mouse_id),
-        reads = reads_for_mouse_id
-    )
-    colnames(reads_df) = c('mouse_id', new_colname)  # rename new column
-
-    # left join to the main table
-    df = merge(
-        df, reads_df,
-        by='mouse_id',
-        all.x=FALSE, all.y=FALSE,  # do not include null values
-        na_matches = 'never'
-    )
-    return(df)
-}
-
+out_dir = file.path(base_dir, opt[['output-subdir']])
+zscore = qnorm(opt[['zscore-threshold']])  # 1.96 if zscore_threshold=0.975
 
 # Start Log
 start_time = Sys.time()
-log <- log_open(paste("escapegenecalculator_old ", start_time, '.log', sep=''))
+log <- log_open(paste0("escapegenecalculator_old-",
+                       strftime(start_time, format="%Y%m%d_%H%M%S"), '.log'))
 log_print(paste('Script started at:', start_time))
-if (save==TRUE) {
+
+if (!troubleshooting) {
     log_print(paste(Sys.time(), 'base_dir:', base_dir))
     log_print(paste(Sys.time(), 'in_dir:', in_dir))
     log_print(paste(Sys.time(), 'output dir:', out_dir))
     log_print(paste(Sys.time(), 'zscore:', zscore))
 } else {
-    log_print(paste(Sys.time(), 'save: ', save))
+    log_print(paste(Sys.time(), 'troubleshooting: ', troubleshooting))
 }
+
 
 
 # ----------------------------------------------------------------------
@@ -152,14 +78,14 @@ if (file.exists(config_file)) {
 # ----------------------------------------------------------------------
 # Read in raw data
 
-log_print(Sys.time(), 'Merging data...')
+log_print(paste(Sys.time(), 'Merging data...'))
 
 # read in files specified in the config file
-mat_reads = get_reads(
+mat_reads = get_merged_reads(
     file.path(in_dir, "mat_reads", config[, 'mat_reads_filenames']),
     config, chromosome_parentage='mat'
 )
-pat_reads = get_reads(
+pat_reads = get_merged_reads(
     file.path(in_dir, "pat_reads", config[, 'pat_reads_filenames']),
     config, chromosome_parentage='pat'
 )
@@ -188,9 +114,9 @@ all_reads <- all_reads[all_reads['chromosome_pat']!='Y',]  # filter Y chromosome
 x_reads_wide = all_reads[(all_reads['chromosome_mat']=='X'), ]
 
 # write data
-if (save) {
+if (!troubleshooting) {
 
-    log_print(Sys.time(), 'Saving merged data...')
+    log_print(paste(Sys.time(), 'Saving merged data...'))
 
     if (!dir.exists(file.path(out_dir, 'reads'))) {
         dir.create(file.path(out_dir, 'reads'), recursive=TRUE)
@@ -227,9 +153,9 @@ read_summary = concat_reads(
 read_summary['bias_xi_div_xa'] = read_summary['total_reads_pat']/read_summary['total_reads_mat']
 
 # write data
-if (save) {
+if (!troubleshooting) {
 
-    log_print(Sys.time(), 'Writing summary...')
+    log_print(paste(Sys.time(), 'Writing summary...'))
 
     if (!dir.exists(file.path(out_dir, 'metadata'))) {
         dir.create(file.path(out_dir, 'metadata'), recursive=TRUE)
@@ -337,9 +263,9 @@ cols = paste('lower_confidence_interval', female_mice, sep='_')
 ci_data = x_reads_wide[apply(x_reads_wide[cols], 1, function(x) all(x>0)), ]  # all columns > 0
 
 
-if (save) {
+if (!troubleshooting) {
     
-    log_print(Sys.time(), 'Writing data...')
+    log_print(paste(Sys.time(), 'Writing data...'))
 
     if (!dir.exists(file.path(out_dir))) {
         dir.create(file.path(out_dir), recursive=TRUE)
@@ -386,7 +312,7 @@ colnames(norm_reads) <- sapply(colnames(norm_reads), function(x) gsub('num_reads
 norm_x_reads <- norm_reads[norm_reads['chromosome_mat']=='X', ]
 
 # write data
-if (save) {
+if (!troubleshooting) {
     log_print('Writing RPM data...')
     write.table(norm_reads, file.path(out_dir, 'reads', 'rpm.csv'),
                 row.names=FALSE, col.names=TRUE, sep=',')
@@ -436,7 +362,7 @@ pat_count_cols = filter_list_for_match(colnames(norm_x_reads), pattern=c('rpm', 
 norm_x_reads[, gsub('rpm', 'rpkm', pat_count_cols)] <- norm_x_reads[pat_count_cols]/norm_x_reads[,"exon_length_pat"]*1000
 
 # Write RPKM to file
-if (save) {
+if (!troubleshooting) {
     log_print("Writing RPKM data...")
     write.table(
         norm_x_reads[items_in_a_not_b(colnames(norm_x_reads), c("index", mat_count_cols, pat_count_cols))],
@@ -512,7 +438,7 @@ filtered_data = norm_x_reads[
 
 
 # save data
-if (save) {
+if (!troubleshooting) {
 
     log_print("Writing SRPM data...")
 
@@ -557,8 +483,7 @@ if (save) {
 shared_genes = intersect(filtered_data[, 'gene_name'], ci_data[, 'gene_name'])
 filtered_data <- filter_dataframe_column_by_list(filtered_data, 'gene_name', shared_genes)
 
-# save data
-if (save) {
+if (!troubleshooting) {
     log_print("Writing filtered SRPM data...")
     write.table(
         filtered_data,

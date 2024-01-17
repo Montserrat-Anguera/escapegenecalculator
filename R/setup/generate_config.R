@@ -1,57 +1,48 @@
+## Helps you setup a config file.
 ## The goal of this script is to eliminate the dependency of escapegenecalculator on
-## using filenames to store metadata
+## using filenames to store metadata.
 
-
-wd = dirname(this.path::here())  # wd = '~/github/R/escapegenecalculator'
+wd = dirname(dirname(this.path::here()))  # wd = '~/github/R/escapegenecalculator'
 library('optparse')
 library('logr')
-source(file.path(wd, 'R', 'utils.R'))
-
-
-# args
-option_list = list(
-
-    make_option(c("-i", "--input-dir"), default="data/berletch-spleen", metavar="data/berletch-spleen",
-                type="character", help="set the base directory"),
-
-    make_option(c("-o", "--output-dir"), default="output-2", metavar="output-2",
-                type="character", help="data will be output in this folder inside the input-dir"),
-
-    make_option(c("-m", "--mat-mouse-strain"), default="Mus_musculus", metavar="Mus_musculus",
-                type="character", help="set the maternal mouse strain"),
-
-    make_option(c("-p", "--pat-mouse-strain"), default="Mus_musculus_casteij", metavar="Mus_musculus_casteij",
-                type="character", help="set the paternal mouse strain"),
-
-    make_option(c("-s", "--save"), default=TRUE, action="store_false", metavar="TRUE",
-                type="logical", help="disable if you're troubleshooting and don't want to overwrite your files")
-
-)
-
-opt_parser = OptionParser(option_list=option_list)
-opt = parse_args(opt_parser)
-
-
-# for troubleshooting
-# opt <- list(
-#     "input-dir" = "data/berletch-spleen",
-#     "output-dir" = "output-2",
-#     "mat-mouse-strain" = "Mus_musculus",
-#     "pat-mouse-strain" = "Mus_musculus_casteij",
-# )
+import::from(file.path(wd, 'R', 'tools', 'file_io.R'),
+    'list_files', .character_only=TRUE)
 
 
 # ----------------------------------------------------------------------
 # Pre-script settings
 
+# args
+option_list = list(
 
-# for readability downstream
-in_dir = file.path(wd, opt['input-dir'][[1]])
-out_dir = file.path(in_dir, opt['output-dir'][[1]])
-mat_mouse_strain = opt['mat-mouse-strain'][[1]]
-pat_mouse_strain = opt['pat-mouse-strain'][[1]]
-save = opt['save'][[1]]
+    make_option(c("-i", "--input-dir"), default="data/berletch-spleen",
+                metavar="data/berletch-spleen", type="character",
+                help="set the base directory"),
 
+    make_option(c("-o", "--output-dir"), default="output-2",
+                metavar="output-2", type="character",
+                help="data will be output in this folder inside the input-dir"),
+
+    make_option(c("-m", "--mat-mouse-strain"), default="Mus_musculus",
+                metavar="Mus_musculus", type="character",
+                help="set the maternal mouse strain"),
+
+    make_option(c("-p", "--pat-mouse-strain"), default="Mus_spretus",
+                metavar="Mus_spretus", type="character",
+                help="set the paternal mouse strain"),
+
+    make_option(c("-t", "--troubleshooting"), default=FALSE, action="store_true",
+                metavar="FALSE", type="logical",
+                help="enable if troubleshooting to prevent overwriting your files")
+)
+opt_parser = OptionParser(option_list=option_list)
+opt = parse_args(opt_parser)
+troubleshooting = opt[['troubleshooting']]
+
+in_dir = file.path(wd, opt[['input-dir']])
+out_dir = file.path(in_dir, opt[['output-dir']])
+mat_mouse_strain = opt[['mat-mouse-strain']]
+pat_mouse_strain = opt[['pat-mouse-strain']]
 
 # required defaults
 mat_reads_dir = file.path(in_dir, "input", "mat_reads")
@@ -62,19 +53,19 @@ default_mouse_gender = "female"
 
 # Start Log
 start_time = Sys.time()
-log <- log_open(paste("generate_config ", start_time, '.log', sep=''))
+log <- log_open(paste0("generate_config-",
+                       strftime(start_time, format="%Y%m%d_%H%M%S"), '.log'))
 log_print(paste('Script started at:', start_time))
-if (save==TRUE) {
+if (!troubleshooting) {
     log_print(paste(Sys.time(), 'in_dir:', in_dir))
     log_print(paste(Sys.time(), 'out_dir:', out_dir))
 } else {
-    log_print(paste(Sys.time(), 'save:', save))
+    log_print(paste(Sys.time(), 'troubleshooting:', troubleshooting))
 }
 
 
 # ----------------------------------------------------------------------
 # Generate Config File
-
 
 mat_reads_files = list_files(mat_reads_dir, recursive=FALSE, full_name=FALSE)
 pat_reads_files = list_files(pat_reads_dir, recursive=FALSE, full_name=FALSE)
@@ -105,8 +96,8 @@ df['mat_mouse_strain'] = mat_mouse_strain
 df['pat_mouse_strain'] = pat_mouse_strain
 
 
-# save data
-if (save==TRUE) {
+# save
+if (!troubleshooting) {
 
     log_print(paste(Sys.time(), "Writing data..."))
 
@@ -123,3 +114,8 @@ if (save==TRUE) {
 
     log_print(paste(Sys.time(), "Remember to check the config file before using!"))
 }
+
+end_time = Sys.time()
+log_print(paste('Script ended at:', Sys.time()))
+log_print(paste("Script completed in:", difftime(end_time, start_time)))
+log_close()
