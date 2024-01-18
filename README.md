@@ -22,7 +22,7 @@ The XCI escape gene analysis performed for mouse AT2 cells in PMID: [36638790](h
 
 ## Installation
 
-Run the following in your R console. We have used R 4.3.0 with success, and any version should work fine.
+Run the following in your R console. We have used R 4.3.0 with success, and any version above 3.6.0 should work fine.
 
 ```R
 install.packages("devtools") # warning: takes a long time!
@@ -33,18 +33,24 @@ install.packages("data.table")
 install.packages("this.path")  # See: https://github.com/ArcadeAntics/this.path
 install.packages("optparse")
 install.packages("tidyr")
-# install.packages("dplyr")  # eliminated this as a dependency
+install.packages("import")
+install.packages("plotly")
 
 install.packages("BiocManager")
 BiocManager::install("rtracklayer")  # this takes ~15 minutes
 BiocManager::install("GenomicFeatures")
 ```
 
+Some of the data analysis was completed using plotly. To make this work, you will need to create a conda environment and link it to your R installation. In this conda environment (`r-reticulate` on my machine), install the following:
 
+```bash
+conda install plotly
+pip install kaleido
+```
 
 ## Downloading Data
 
-Check the README files for what to download for each folder.
+Check the README.md files in each directory to see what to download for each folder.
 
 
 ## Getting Started
