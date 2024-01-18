@@ -83,7 +83,7 @@ plot <- ggplot(df) +
     ylim(0, 10)  # modify this if necessary
 
 if (!troubleshooting) {
-    if (!file.exists(out_dir)) {
+    if (!dir.exists(out_dir)) {
         dir.create(out_dir)
     }
 

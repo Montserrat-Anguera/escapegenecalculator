@@ -60,7 +60,7 @@ for (file in files) {
     if (!troubleshooting) {
         log_print(paste('Writing file: ', filename, '.csv', sep=''))
 
-        if (!file.exists(out_dir)) {
+        if (!dir.exists(out_dir)) {
             dir.create(out_dir)
         }
 

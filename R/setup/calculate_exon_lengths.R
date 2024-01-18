@@ -108,7 +108,7 @@ if (!troubleshooting) {
 
     log_print(paste('Writing file...', Sys.time()))
 
-    if (!file.exists(out_dir)) {
+    if (!dir.exists(out_dir)) {
         dir.create(out_dir)
     }
 
