@@ -84,13 +84,13 @@ for (file in files) {
 
     # save
     if (!troubleshooting) {
+        filename = tools::file_path_sans_ext(basename(file))
         log_print(paste('Writing file: ', filename, '.csv', sep=''))
 
         if (!dir.exists(out_dir)) {
             dir.create(out_dir)
         }
-
-        filename = tools::file_path_sans_ext(basename(file))
+        
         write.table(
             df[subset],
             file = file.path(out_dir, paste(filename, '.csv', sep='')),
