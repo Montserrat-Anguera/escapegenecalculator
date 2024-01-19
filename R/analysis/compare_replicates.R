@@ -3,8 +3,8 @@
 wd = dirname(dirname(this.path::here()))  # wd = '~/github/R/escapegenecalculator'
 library('optparse')
 library('logr')
-import::from(plotly, 'save_image')
-suppressPackageStartupMessages(library('plotly'))
+import::from(magrittr, '%>%')
+import::from(plotly, 'add_trace', 'save_image')
 import::from(file.path(wd, 'R', 'tools', 'file_io.R'),
     'append_many_csv', .character_only=TRUE)
 import::from(file.path(wd, 'R', 'tools', 'plotting.R'),
@@ -35,7 +35,7 @@ troubleshooting <- opt[['troubleshooting']]
 
 # Start Log
 start_time = Sys.time()
-log <- log_open(paste0("threshold_analysis-",
+log <- log_open(paste0("compare_replicates-",
                        strftime(start_time, format="%Y%m%d_%H%M%S"), '.log'))
 log_print(paste('Start ', start_time))
 if (!troubleshooting) {
@@ -83,18 +83,15 @@ fig <- plot_multiscatter(
 
 # save
 if (!troubleshooting) {
-
     log_print('Saving...')
-
     if (!dir.exists(file.path(wd, opt[['output-dir']]))) {
         dir.create(file.path(wd, opt[['output-dir']]))
     }
     
-    save_image(
-        fig,
+    save_image(fig,
         file=file.path(
-            gsub('^~/', '', wd),
-            opt[['output-dir']], 'srpms.png'
+            gsub('^~/', '', wd), opt[['output-dir']],
+            'srpms.png'
         ),
         width=1000, height=600, scale=2
     )
@@ -125,14 +122,12 @@ fig <- plot_multiscatter(
 
 # save
 if (!troubleshooting) {
-
     log_print('Saving...')
 
-    save_image(
-        fig,
+    save_image(fig,
         file=file.path(
-            gsub('^~/', '', wd),
-            opt[['output-dir']], 'srpms_log_log.png'
+            gsub('^~/', '', wd), opt[['output-dir']],
+            'srpms_log_log.png'
         ),
         width=1000, height=600, scale=2
     )

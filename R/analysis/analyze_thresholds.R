@@ -3,7 +3,8 @@
 wd = dirname(dirname(this.path::here()))  # wd = '~/github/R/escapegenecalculator'
 library('optparse')
 library('logr')
-suppressPackageStartupMessages(library('plotly'))
+import::from(magrittr, '%>%')
+import::from(plotly, 'add_trace', 'save_image')
 import::from(file.path(wd, 'R', 'tools', 'df_tools.R'),
     'coalesce_colnames', 'fillna', .character_only=TRUE)
 import::from(file.path(wd, 'R', 'tools', 'text_tools.R'),
@@ -144,17 +145,14 @@ add_trace(
 
 # save
 if (!troubleshooting) {
+    log_print('Saving...')
     if (!dir.exists(file.path(wd, opt[['output-dir']], opt[['name']]))) {
         dir.create(file.path(wd, opt[['output-dir']], opt[['name']]), recursive=TRUE)
     }
 
-    log_print('Saving...')
-
-    save_image(
-        fig,
+    save_image(fig,
         file=file.path(
-            gsub('^~/', '', wd),
-            opt[['output-dir']], opt[['name']],
+            gsub('^~/', '', wd), opt[['output-dir']], opt[['name']],
             paste('num_reads-log_log', opt[['name']], 'ci.png', sep='-')
         ),
         width=1100, height=600, scale=2
@@ -201,14 +199,11 @@ add_trace(
 
 # save
 if (!troubleshooting) {
-
     log_print('Saving...')
 
-    save_image(
-        fig,
+    save_image(fig,
         file=file.path(
-            gsub('^~/', '', wd), 
-            opt[['output-dir']], opt[['name']],
+            gsub('^~/', '', wd), opt[['output-dir']], opt[['name']],
             paste('num_reads', opt[['name']], 'ci.png', sep='-')
         ),
         width=1100, height=600, scale=2
@@ -259,14 +254,11 @@ add_trace(
 
 # save
 if (!troubleshooting) {
-
     log_print('Saving...')
 
-    save_image(
-        fig,
+    save_image(fig,
         file=file.path(
-            gsub('^~/', '', wd),
-            opt[['output-dir']], opt[['name']],
+            gsub('^~/', '', wd), opt[['output-dir']], opt[['name']],
             paste0('num_reads-log_log-', opt[['name']], '.png')
         ),
         width=1200, height=600, scale=2
@@ -314,14 +306,11 @@ add_trace(
 
 # save
 if (!troubleshooting) {
-
     log_print('Saving...')
 
-    save_image(
-        fig,
+    save_image(fig,
         file=file.path(
-            gsub('^~/', '', wd),
-            opt[['output-dir']], opt[['name']],
+            gsub('^~/', '', wd), opt[['output-dir']], opt[['name']],
             paste0('num_reads-', opt[['name']], '.png')
         ),
         width=1200, height=600, scale=2

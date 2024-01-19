@@ -1,4 +1,5 @@
 import::here(plotly, 'plot_ly', 'layout')
+import::here(magrittr, '%>%')
 
 ## Functions
 ## plot_multiscatter
