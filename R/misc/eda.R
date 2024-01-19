@@ -1,4 +1,4 @@
-## Figure out where the thresholds work
+## High level overview of SRPMs
 
 wd = dirname(dirname(this.path::here()))  # wd = '~/github/R/escapegenecalculator'
 library('optparse')
@@ -49,11 +49,17 @@ if (!troubleshooting) {
 # ----------------------------------------------------------------------
 # Preprocessing
 
-all_reads <- append_many_csv(file.path(wd, opt[['input-dir']]), sep=',')
+all_reads <- read.csv(
+    file.path(wd, opt[['input-file']]),
+    header=TRUE, sep=',', check.names=FALSE
+)
 all_reads['srpm_mat'] <- round(all_reads['srpm_mat'])
 all_reads['srpm_pat'] <- round(all_reads['srpm_pat'])
+
+# Only keep rows with both maternal and paternal reads
 all_reads <- all_reads[(all_reads['num_reads_mat']!= 0) & (all_reads['num_reads_pat']!= 0), ]
 
+# have size correlated with RPKMs
 ceiling = 1000  # roughly quantile(all_reads[['rpkm']], probs=0.994)
 all_reads['size_factor'] <- sapply(all_reads[['rpkm']], function(x) min(x/ceiling, 1))
 

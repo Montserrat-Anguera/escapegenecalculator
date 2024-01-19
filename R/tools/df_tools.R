@@ -1,10 +1,60 @@
 import::here(tidyr, 'pivot_wider')
 
 ## Functions
+## coalesce_colnames
+## fillna
 ## filter_dataframe_column_by_list
 ## most_frequent_item
 ## pivot
 ## reset_index
+
+
+#' Coalesce Column Names
+#' 
+#' @description
+#' Given a dataframe with columns with one-hot encodings,
+#' aggregates the column names into a comma-separated list
+#' 
+#' @export
+coalesce_colnames <- function(df, cols, sep=', ') {
+
+    output <- ''
+    for (col in cols) {
+        output <- gsub('1', col, paste(output, gsub('0', '', df[[col]]), sep=sep))
+        output <- gsub(' ,', '', output)
+    }
+    output <- sub('^, ', '', output)
+    output <- sub(', $', '', output)
+    return(output)
+}
+
+
+#' Fill specific column with NA
+#' 
+#' @description Mirrors Pandas' \href{https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.fillna.html}{fillna}
+#' 
+#' @param df a dataframe
+#' @param cols a list of columns to replace
+#' @param val the value to fill with
+#' @param inplace TRUE allows you to avoid re-assigning the variable
+#' @return Returns a dataframe.
+#' 
+#' @examples
+#' mtcars['new_col'] <- NA
+#' head(fillna(mtcars, c('new_col'), 1))
+#' 
+#' @export
+fillna <- function(df, cols, val=0, inplace=FALSE) {
+    df_name <- deparse(substitute(df))
+    for (col in cols) {
+        df[is.na(df[, col]), col] <- val
+    }
+    if (inplace) {
+        assign(df_name, df, envir=.GlobalEnv)
+    } else {
+        return(df)
+    }
+}
 
 
 #' Filter dataframe column by list
