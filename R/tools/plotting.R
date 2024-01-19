@@ -52,7 +52,7 @@ plot_multiscatter <- function(
         }
     }
 
-    fig <- plot_ly(
+    fig <- plot_ly() %>% add_trace(
         data = df,
         x = df[[x]],
         y = df[[y]],
@@ -65,7 +65,10 @@ plot_multiscatter <- function(
         hoverinfo = 'text',
         hovertext = hovertext
     ) %>% layout(
-        title = title,
+        title = list(
+            text = title,
+            x = 0
+        ),
         xaxis = list(
             title_text = xlabel,
             showgrid = TRUE, zeroline = FALSE,

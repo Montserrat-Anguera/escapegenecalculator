@@ -1,13 +1,13 @@
-## Examine when the thresholds are important
-## TODO: Plot thresholds
+## Compare data to the binomial model threshold
 
 wd = dirname(dirname(this.path::here()))  # wd = '~/github/R/escapegenecalculator'
 library('optparse')
 library('logr')
-import::from(plotly, 'save_image')
 suppressPackageStartupMessages(library('plotly'))
 import::from(file.path(wd, 'R', 'tools', 'df_tools.R'),
     'coalesce_colnames', 'fillna', .character_only=TRUE)
+import::from(file.path(wd, 'R', 'tools', 'text_tools.R'),
+    'snake_to_title_case', .character_only=TRUE)
 import::from(file.path(wd, 'R', 'tools', 'plotting.R'),
     'plot_multiscatter', .character_only=TRUE)
 
@@ -18,12 +18,20 @@ import::from(file.path(wd, 'R', 'tools', 'plotting.R'),
 # args
 option_list = list(
     make_option(c("-i", "--input-file"), default="data/berletch-spleen/output-2/x_reads/x_reads-mouse_1.csv",
-                metavar="data/berletch-spleen/output-2/x_reads", type="character",
+                metavar="data/berletch-spleen/output-1/x_reads", type="character",
                 help="set the input directory"),
 
     make_option(c("-o", "--output-dir"), default="figures",
                 metavar="figures", type="character",
                 help="set the output directory"),
+
+    make_option(c("-n", "--name"), default="mouse_1",
+                metavar="mouse_1", type="character",
+                help="set the mouse_id for figure titles and filenames"),
+
+    make_option(c("-z", "--zscore-threshold"), default=0.99,
+                metavar="0.99", type="double",
+                help="was 0.975 in Zack's version, but Berletch's paper requires 0.99"),
 
     make_option(c("-t", "--troubleshooting"), default=FALSE, action="store_true",
                 metavar="FALSE", type="logical",
@@ -32,6 +40,7 @@ option_list = list(
 opt_parser = OptionParser(option_list=option_list)
 opt = parse_args(opt_parser)
 troubleshooting <- opt[['troubleshooting']]
+zscore = qnorm(opt[['zscore-threshold']])  # 2.326 if zscore_threshold=0.99
 
 
 # Start Log
@@ -54,8 +63,8 @@ all_reads <- read.csv(
     file.path(wd, opt[['input-file']]),
     header=TRUE, sep=',', check.names=FALSE
 )
-all_reads['srpm_mat'] <- round(all_reads['srpm_mat'])
-all_reads['srpm_pat'] <- round(all_reads['srpm_pat'])
+# all_reads['srpm_mat'] <- round(all_reads['srpm_mat'])
+# all_reads['srpm_pat'] <- round(all_reads['srpm_pat'])
 
 # Only keep rows with both maternal and paternal reads
 all_reads <- all_reads[(all_reads['num_reads_mat']!= 0) & (all_reads['num_reads_pat']!= 0), ]
@@ -95,12 +104,16 @@ all_reads['sanity_filter'] <- gsub('1', 'lower_ci_gt_0',
 
 log_print('Plotting Figure 1...')
 
+# confidence interval
+y_array = seq(from = 0, to = zscore**2-0.0001, length.out = 50)
+x_array = y_array**2 / (zscore**2 - y_array)
+
 fig = plot_multiscatter(
     all_reads,
     x="num_reads_mat", y="num_reads_pat", color='sanity_filter',
     size='size_factor', 
     xlabel='Xa Number of Reads', ylabel='Xi Number of Reads',
-    title='Berletch Spleen Rep 1, Number of Reads',
+    title=paste0('Berletch Spleen ', snake_to_title_case(opt[['name']]), ', Number of Reads'),
     hover_data=c('gene_name'),
     xmin=0.5, xmax=35000,
     ymin=0.5, ymax=100,
@@ -110,10 +123,30 @@ fig = plot_multiscatter(
         'lower_ci_lte_0'='#d62728',  # red
         'lower_ci_gt_0'='#1f77b4' # blue
     )
-)
+) %>%  # linear confidence interval
+add_trace(
+    x = c(0, 35000),
+    y = c(0, 0.005*35000),
+    type = "scatter",
+    mode = "lines",
+    line = list(color = 'grey'),
+    showlegend = FALSE
+) %>%  # binomial model confidence interval
+add_trace(
+    x = x_array,
+    y = y_array,
+    type = "scatter",
+    mode = "lines",
+    line = list(color = 'grey'),
+    showlegend = FALSE,
+    stackgroup=1  # shade below
+) 
 
 # save
 if (!troubleshooting) {
+    if (!dir.exists(file.path(wd, opt[['output-dir']], opt[['name']]))) {
+        dir.create(file.path(wd, opt[['output-dir']], opt[['name']]), recursive=TRUE)
+    }
 
     log_print('Saving...')
 
@@ -121,7 +154,8 @@ if (!troubleshooting) {
         fig,
         file=file.path(
             gsub('^~/', '', wd),
-            opt[['output-dir']], 'num_reads-log_log-mouse_1-ci.png'
+            opt[['output-dir']], opt[['name']],
+            paste('num_reads-log_log', opt[['name']], 'ci.png', sep='-')
         ),
         width=1100, height=600, scale=2
     )
@@ -138,7 +172,7 @@ fig = plot_multiscatter(
     x="num_reads_mat", y="num_reads_pat", color='sanity_filter',
     size='size_factor', 
     xlabel='Xa Number of Reads', ylabel='Xi Number of Reads',
-    title='Berletch Spleen Rep 1, Number of Reads',
+    title=paste0('Berletch Spleen ', snake_to_title_case(opt[['name']]), ', Number of Reads'),
     hover_data=c('gene_name'),
     xmin=0.5, xmax=27500,
     ymin=0.5, ymax=100,
@@ -146,6 +180,23 @@ fig = plot_multiscatter(
         'lower_ci_lte_0'='#d62728',  # red
         'lower_ci_gt_0'='#1f77b4' # blue
     )
+) %>%  # linear confidence interval
+add_trace(
+    x = c(0, 35000),
+    y = c(0, 0.005*35000),
+    type = "scatter",
+    mode = "lines",
+    line = list(color = 'grey'),
+    showlegend = FALSE
+) %>%  # binomial model confidence interval
+add_trace(
+    x = x_array,
+    y = y_array,
+    type = "scatter",
+    mode = "lines",
+    line = list(color = 'grey'),
+    showlegend = FALSE,
+    stackgroup=1  # shade below
 )
 
 # save
@@ -156,8 +207,9 @@ if (!troubleshooting) {
     save_image(
         fig,
         file=file.path(
-            gsub('^~/', '', wd),
-            opt[['output-dir']], 'num_reads-mouse_1-ci.png'
+            gsub('^~/', '', wd), 
+            opt[['output-dir']], opt[['name']],
+            paste('num_reads', opt[['name']], 'ci.png', sep='-')
         ),
         width=1100, height=600, scale=2
     )
@@ -175,7 +227,7 @@ fig = plot_multiscatter(
     x="num_reads_mat", y="num_reads_pat", color="subset",
     size='size_factor', 
     xlabel='Xa Number of Reads', ylabel='Xi Number of Reads',
-    title='Berletch Spleen Rep 1, Number of Reads',
+    title=paste0('Berletch Spleen ', snake_to_title_case(opt[['name']]), ', Number of Reads'),
     hover_data=c('gene_name'),
     xmin=0.5, xmax=35000,
     ymin=0.5, ymax=100,
@@ -186,7 +238,24 @@ fig = plot_multiscatter(
         'xi_srpm_lt_2' = '#ff7f0e',  # orange
         'xi_srpm_lt_2, rpkm_lte_1' = '#9467bd'  # purple
     )
-)
+) %>%  # linear confidence interval
+add_trace(
+    x = c(0, 35000),
+    y = c(0, 0.005*35000),
+    type = "scatter",
+    mode = "lines",
+    line = list(color = 'grey'),
+    showlegend = FALSE
+) %>%  # binomial model confidence interval
+add_trace(
+    x = x_array,
+    y = y_array,
+    type = "scatter",
+    mode = "lines",
+    line = list(color = 'grey'),
+    showlegend = FALSE,
+    stackgroup=1  # shade below
+) 
 
 # save
 if (!troubleshooting) {
@@ -197,7 +266,8 @@ if (!troubleshooting) {
         fig,
         file=file.path(
             gsub('^~/', '', wd),
-            opt[['output-dir']], 'num_reads-log_log-mouse_1.png'
+            opt[['output-dir']], opt[['name']],
+            paste0('num_reads-log_log-', opt[['name']], '.png')
         ),
         width=1200, height=600, scale=2
     )
@@ -214,7 +284,7 @@ fig = plot_multiscatter(
     x="num_reads_mat", y="num_reads_pat", color="subset",
     size='size_factor', 
     xlabel='Xa Number of Reads', ylabel='Xi Number of Reads',
-    title='Berletch Spleen Rep 1, Number of Reads',
+    title=paste0('Berletch Spleen ', snake_to_title_case(opt[['name']]), ', Number of Reads'),
     hover_data=c('gene_name'),
     xmin=0.5, xmax=27500,
     ymin=0.5, ymax=100,
@@ -223,7 +293,24 @@ fig = plot_multiscatter(
         'xi_srpm_lt_2' = '#ff7f0e',  # orange
         'xi_srpm_lt_2, rpkm_lte_1' = '#9467bd'  # purple
     )
-)
+) %>%  # linear confidence interval
+add_trace(
+    x = c(0, 35000),
+    y = c(0, 0.005*35000),
+    type = "scatter",
+    mode = "lines",
+    line = list(color = 'grey'),
+    showlegend = FALSE
+) %>%  # binomial model confidence interval
+add_trace(
+    x = x_array,
+    y = y_array,
+    type = "scatter",
+    mode = "lines",
+    line = list(color = 'grey'),
+    showlegend = FALSE,
+    stackgroup=1  # shade below
+) 
 
 # save
 if (!troubleshooting) {
@@ -234,7 +321,8 @@ if (!troubleshooting) {
         fig,
         file=file.path(
             gsub('^~/', '', wd),
-            opt[['output-dir']], 'num_reads-mouse_1.png'
+            opt[['output-dir']], opt[['name']],
+            paste0('num_reads-', opt[['name']], '.png')
         ),
         width=1200, height=600, scale=2
     )

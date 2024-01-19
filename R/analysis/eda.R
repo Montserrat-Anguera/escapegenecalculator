@@ -49,10 +49,7 @@ if (!troubleshooting) {
 # ----------------------------------------------------------------------
 # Preprocessing
 
-all_reads <- read.csv(
-    file.path(wd, opt[['input-file']]),
-    header=TRUE, sep=',', check.names=FALSE
-)
+all_reads <- append_many_csv(file.path(wd, opt[['input-dir']]))
 all_reads['srpm_mat'] <- round(all_reads['srpm_mat'])
 all_reads['srpm_pat'] <- round(all_reads['srpm_pat'])
 
