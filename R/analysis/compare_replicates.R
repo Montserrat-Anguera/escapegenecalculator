@@ -4,7 +4,7 @@ wd = dirname(dirname(this.path::here()))  # wd = '~/github/R/escapegenecalculato
 library('optparse')
 library('logr')
 import::from(magrittr, '%>%')
-import::from(plotly, 'add_trace', 'save_image')
+import::from(plotly, 'save_image')
 import::from(file.path(wd, 'R', 'tools', 'file_io.R'),
     'append_many_csv', .character_only=TRUE)
 import::from(file.path(wd, 'R', 'tools', 'plotting.R'),

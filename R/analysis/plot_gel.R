@@ -5,7 +5,7 @@ library('optparse')
 library('logr')
 import::from(magrittr, '%>%')
 import::from(reshape2, 'melt')
-import::from(plotly, 'add_trace', 'save_image')
+import::from(plotly, 'plot_ly', 'save_image')
 import::from(file.path(wd, 'R', 'tools', 'file_io.R'),
     'append_many_csv', .character_only=TRUE)
 import::from(file.path(wd, 'R', 'tools', 'df_tools.R'),
@@ -14,6 +14,8 @@ import::from(file.path(wd, 'R', 'tools', 'list_tools.R'),
     'multiple_replacement', .character_only=TRUE)
 import::from(file.path(wd, 'R', 'tools', 'text_tools.R'),
     'snake_to_title_case', .character_only=TRUE)
+import::from(file.path(wd, 'R', 'tools', 'plotting.R'),
+    'plot_gel', .character_only=TRUE)
 import::from(file.path(wd, 'R', 'functions', 'analysis.R'),
     'adjust_closer', .character_only=TRUE)
 
@@ -125,8 +127,20 @@ gel_df['lane'] <- sub('mouse_', 'Ms ', gel_df[['mouse_id']])
 
 log_print('Plotting Figure 1...')
 
-# plot
-
+fig = plot_gel(
+    gel_df,
+    size='exon_length',
+    yrange=c(1000, 25000),
+    ylabel='Exon Length',
+    # title='Escape Genes from Berletch et al.',
+    text_col='num_reads',
+    # column_order=['spleen_rep_1_mat', 'spleen_rep_2_mat', 'spleen_rep_1_pat', 'spleen_rep_2_pat'],
+    # showlegend=True,
+    top_margin=175,
+    height=1000,
+    tickangle=0,
+    font_size=25
+)
 
 # save
 if (!troubleshooting) {
@@ -165,11 +179,11 @@ gel_df = multi_melt(
     var_name='chromosomal_parentage'
 )
 
-gel_df['lange'] = paste(
+gel_df['lane'] = paste(
     sapply(gel_df[['mouse_id']], snake_to_title_case),
     multiple_replacement(
         gel_df[['chromosomal_parentage']],
-        c("mat"='Bl6', "pat"="Spretus")),
+        c("mat"='Bl6', "pat"="Cast")),
     sep='<br>')
 
 # calculate intensities
@@ -187,8 +201,20 @@ for (mouse_id in unique(gel_df[['mouse_id']])) {
 
 log_print('Plotting Figure 2...')
 
-# plot
-
+fig = plot_gel(
+    gel_df[(!is.na(gel_df['exon_length'])), ],
+    size='exon_length',
+    yrange=c(1000, 25000),
+    ylabel='Exon Length',
+    # title='Escape Genes from Berletch et al.',
+    text_col='num_reads',
+    # column_order=['spleen_rep_1_mat', 'spleen_rep_2_mat', 'spleen_rep_1_pat', 'spleen_rep_2_pat'],
+    # showlegend=True,
+    top_margin=175,
+    height=1000,
+    tickangle=0,
+    font_size=25
+)
 
 # save
 if (!troubleshooting) {
