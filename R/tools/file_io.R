@@ -71,7 +71,7 @@ join_many_csv <- function(paths, index_cols, value_cols, recursive=TRUE) {
     # Warning: column names ‘count.x’, ‘count.y’ are duplicated in the result
     # See: https://stackoverflow.com/questions/38603668/suppress-any-emission-of-a-particular-warning-message
     withCallingHandlers({
-        all_data <- Reduce(
+        merged <- Reduce(
             function(...) merge(..., by=index_cols),
             lapply(df_list, "[", c(index_cols, value_cols))
         )
@@ -83,11 +83,11 @@ join_many_csv <- function(paths, index_cols, value_cols, recursive=TRUE) {
     })
     
     # rename columns
-    colnames(all_data) = c(
+    colnames(merged) = c(
         index_cols,  # index_cols
         as.list(outer(value_cols, filenames, paste, sep='-'))  # suffix value_cols with filename
     )
-    return(all_data)
+    return(merged)
 }
 
 

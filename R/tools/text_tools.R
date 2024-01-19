@@ -2,6 +2,7 @@ import::here(stringr, 'str_to_title')
 
 ## Functions
 ## camel_to_snake_case
+## snake_to_title_case
 
 
 #' Standardize CamelCase Titles

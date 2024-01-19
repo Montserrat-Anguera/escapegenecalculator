@@ -1,12 +1,30 @@
 import::here(tidyr, 'pivot_wider')
 
 ## Functions
+## coalesce1
 ## coalesce_colnames
 ## fillna
 ## filter_dataframe_column_by_list
+## multi_melt
 ## most_frequent_item
 ## pivot
 ## reset_index
+
+
+#' Coalesce
+#' 
+#' @references
+#' \href{https://stackoverflow.com/questions/19253820/how-to-implement-coalesce-efficiently-in-r}{StackOverflow post}
+#' 
+#' 
+coalesce1 <- function(...) {
+    ans <- ..1
+    for (elt in list(...)[-1]) {
+        i <- is.na(ans)
+        ans[i] <- elt[i]
+    }
+    ans
+}
 
 
 #' Coalesce Column Names
@@ -83,6 +101,47 @@ filter_dataframe_column_by_list <- function(dataframe, colname, items, index_nam
     } else {
         return (data[, items_in_a_not_b(colnames(data), 'index')])
     }
+}
+
+
+#' Multiple melt
+#' 
+#' @description Unpivot multiple columns simulataneously
+#' 
+#' @export
+multi_melt <- function(
+    df,
+    id_vars=c('id', 'name'),
+    values=list(
+        'metric_1'=c('metric_1_x', 'metric_1_y'),
+        'metric_2'=c('metric_2_x', 'metric_2_y')
+    ),
+    var_name='variable'
+) {
+
+    dfs = new.env()
+    for (value_name in names(values)) {
+        value_vars <- values[[value_name]]
+        tmp = reshape2::melt(
+            df[, c(id_vars, value_vars)],
+            row=id_vars,
+            measure.vars=value_vars,
+            value.name=value_name,
+            variable.name=var_name
+        )
+
+        tmp[var_name] = sub(paste0(value_name, '_'), '', tmp[[var_name]])
+        
+        dfs[[value_name]] <- tmp
+    }
+    dfs <- as.list(dfs)
+
+    merged <- Reduce(
+        function(...) merge(..., by=(c(id_vars, var_name))),
+        dfs
+    )
+
+    return(merged)
 }
 
 

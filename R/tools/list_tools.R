@@ -1,6 +1,9 @@
+import::here(stringi, 'stri_replace_all_regex')
+
 ## Functions
 ## filter_list_for_match
 ## items_in_a_not_b
+## multiple_replacement
 
 
 #' Find matches based on substring
@@ -41,4 +44,43 @@ filter_list_for_match <- function(items, pattern) {
 #' 
 items_in_a_not_b <- function(a, b) {
     return((new <- a[which(!a %in% b)]))
+}
+
+
+#' Replaces each item in a list or vector with all replacements
+#' 
+#' @description
+#' Convenience function to perform multiple replacements on a list or dataframe column.
+#' `multiple_replacement()` can recognize patterns.
+#' 
+#' @param items list or vector
+#' @param replacements a named list of replacements. uses names to match and values to replace.
+#' @return Returns a vector with replaced items
+#' 
+#' @examples
+#' replacements <- c('prefix_' = '', '_suffix' = '')
+#' items <- c('prefix_a_suffix', 'prefix_b_suffix')
+#' multiple_replacement(items, replacements)
+#' 
+#' @seealso [stringi::stri_replace_all_regex()]
+#' 
+multiple_replacement <- function(items, replace_dict) {
+
+    # for (pattern in names(replace_dict)) {
+    #     replacement = replace_dict[[pattern]]
+    #     items <- sapply(items, function(x) gsub(pattern, replacement, x))
+    # }
+
+    patterns <- names(replace_dict)
+    replacements <- sapply(unname(replace_dict), function(x) gsub('\\\\', '$', x))
+    
+    items <- sapply(items,
+        function(x) stri_replace_all_regex(
+            x,
+            pattern = patterns,
+            replacement = replacements,
+            vectorize_all = FALSE)
+    )
+
+    return (items)
 }
