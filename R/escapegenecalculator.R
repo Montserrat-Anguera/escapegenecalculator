@@ -8,6 +8,8 @@
 wd = dirname(this.path::here())  # wd = '~/github/R/escapegenecalculator'
 library('optparse')
 library('logr')
+import::from(file.path(wd, 'R', 'tools', 'df_tools.R'),
+    'coalesce1', .character_only=TRUE)
 import::from(file.path(wd, 'R', 'tools', 'file_io.R'),
     'read_csv_or_tsv', .character_only=TRUE)
 import::from(file.path(wd, 'R', 'tools', 'list_tools.R'),

@@ -1,5 +1,6 @@
 ## Functions
 ## list_files
+## append_many_csv
 ## join_many_csv
 ## read_csv_or_tsv
 
@@ -22,6 +23,20 @@ list_files <- function(dir_path, recursive = TRUE, full_name=TRUE, ext=NULL) {
     } else {
         return (all_files)
     }
+}
+
+
+#' Aggregate csv files by appending them rowwise
+#' 
+#' @description
+#' Read all the csv files from a directory and append them into a single dataframe
+#' 
+#' @export
+append_many_csv <- function(dir_path, sep=',', row_names=NULL) {
+    filenames <- list.files(dir_path, full.names=TRUE)
+    csv <- lapply(filenames, read.csv, sep=sep, row.names=row_names)
+    data <- do.call(rbind, csv)
+    return(data)
 }
 
 
@@ -56,7 +71,7 @@ join_many_csv <- function(paths, index_cols, value_cols, recursive=TRUE) {
     # Warning: column names ‘count.x’, ‘count.y’ are duplicated in the result
     # See: https://stackoverflow.com/questions/38603668/suppress-any-emission-of-a-particular-warning-message
     withCallingHandlers({
-        all_data <- Reduce(
+        merged <- Reduce(
             function(...) merge(..., by=index_cols),
             lapply(df_list, "[", c(index_cols, value_cols))
         )
@@ -68,11 +83,11 @@ join_many_csv <- function(paths, index_cols, value_cols, recursive=TRUE) {
     })
     
     # rename columns
-    colnames(all_data) = c(
+    colnames(merged) = c(
         index_cols,  # index_cols
         as.list(outer(value_cols, filenames, paste, sep='-'))  # suffix value_cols with filename
     )
-    return(all_data)
+    return(merged)
 }
 
 

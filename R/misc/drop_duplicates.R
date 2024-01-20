@@ -13,12 +13,12 @@ import::from(file.path(wd, 'R', 'tools', 'file_io.R'),
 
 # args
 option_list = list(
-    make_option(c("-i", "--input-dir"), default="data/read_counts/pat_reads",
-                metavar="data/read_counts/pat_reads", type="character",
+    make_option(c("-i", "--input-dir"), default="data/berletch-spleen/input/pat_reads",
+                metavar="data/berletch-spleen/input/pat_reads", type="character",
                 help="set the input directory"),
 
-    make_option(c("-o", "--output-dir"), default="data/read_counts/pat_reads_fixed",
-                metavar="data/read_counts/pat_reads_fixed", type="character",
+    make_option(c("-o", "--output-dir"), default="data/berletch-spleen/input/pat_reads_fixed",
+                metavar="data/berletch-spleen/input/pat_reads_fixed", type="character",
                 help="set the output directory"),
 
     make_option(c("-t", "--troubleshooting"), default=FALSE, action="store_true",
@@ -50,21 +50,22 @@ if (!troubleshooting) {
 # ----------------------------------------------------------------------
 # Drop duplicates
 
-files = list_files(in_dir, ext='tsv')
+files = list_files(in_dir, ext='csv')
+print(files)
 for (file in files) {
 
-    df = read.csv(file, na.string="NA", sep='\t', stringsAsFactors=FALSE,)
+    df = read.csv(file, na.string="NA", sep=',', stringsAsFactors=FALSE,)
     df <- df[!duplicated(df), ]
 
     # save
     if (!troubleshooting) {
+        filename = tools::file_path_sans_ext(basename(file))
         log_print(paste('Writing file: ', filename, '.csv', sep=''))
 
         if (!dir.exists(out_dir)) {
             dir.create(out_dir)
         }
 
-        filename = tools::file_path_sans_ext(basename(file))        
         write.table(
             df,
             file = file.path(out_dir, paste(filename, '.csv', sep='')),
