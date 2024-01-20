@@ -5,6 +5,7 @@ library('optparse')
 library('logr')
 import::from(magrittr, '%>%')
 import::from(plotly, 'add_trace', 'save_image')
+import::from(htmlwidgets, 'saveWidget')
 import::from(file.path(wd, 'R', 'tools', 'df_tools.R'),
     'coalesce_colnames', 'fillna', .character_only=TRUE)
 import::from(file.path(wd, 'R', 'tools', 'text_tools.R'),
@@ -157,6 +158,19 @@ if (!troubleshooting) {
         ),
         width=1100, height=600, scale=2
     )
+
+    saveWidget(
+        widget = fig,
+        file = file.path(
+            wd, opt[['output-dir']], opt[['name']],
+            paste('num_reads-log_log', opt[['name']], 'ci.html', sep='-')
+        ),
+        selfcontained = TRUE
+    )
+    unlink(file.path(
+        wd, opt[['output-dir']], opt[['name']],
+        paste('num_reads-log_log', opt[['name']], 'ci_files', sep='-')
+    ), recursive=TRUE)
 }
 
 
@@ -208,6 +222,19 @@ if (!troubleshooting) {
         ),
         width=1100, height=600, scale=2
     )
+
+    saveWidget(
+        widget = fig,
+        file=file.path(
+            wd, opt[['output-dir']], opt[['name']],
+            paste('num_reads', opt[['name']], 'ci.html', sep='-')
+        ),
+        selfcontained = TRUE
+    )
+    unlink(file.path(
+        wd, opt[['output-dir']], opt[['name']],
+        paste('num_reads', opt[['name']], 'ci_files', sep='-')
+    ), recursive=TRUE)
 }
 
 
@@ -263,6 +290,19 @@ if (!troubleshooting) {
         ),
         width=1200, height=600, scale=2
     )
+
+    saveWidget(
+        widget = fig,
+        file=file.path(
+            wd, opt[['output-dir']], opt[['name']],
+            paste0('num_reads-log_log-', opt[['name']], '.html')
+        ),
+        selfcontained = TRUE
+    )
+    unlink(file.path(
+        wd, opt[['output-dir']], opt[['name']],
+        paste0('num_reads-log_log-', opt[['name']], '_files')
+    ), recursive=TRUE)
 }
 
 
@@ -315,6 +355,19 @@ if (!troubleshooting) {
         ),
         width=1200, height=600, scale=2
     )
+
+    saveWidget(
+        widget = fig,
+        file=file.path(
+            wd, opt[['output-dir']], opt[['name']],
+            paste0('num_reads-', opt[['name']], '.html')
+        ),
+        selfcontained = TRUE
+    )
+    unlink(file.path(
+        wd, opt[['output-dir']], opt[['name']],
+        paste0('num_reads-', opt[['name']], '_files')
+    ), recursive=TRUE)
 }
 
 

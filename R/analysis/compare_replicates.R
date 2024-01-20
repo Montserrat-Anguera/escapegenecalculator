@@ -5,6 +5,7 @@ library('optparse')
 library('logr')
 import::from(magrittr, '%>%')
 import::from(plotly, 'save_image')
+import::from(htmlwidgets, 'saveWidget')
 import::from(file.path(wd, 'R', 'tools', 'file_io.R'),
     'append_many_csv', .character_only=TRUE)
 import::from(file.path(wd, 'R', 'tools', 'plotting.R'),
@@ -89,12 +90,18 @@ if (!troubleshooting) {
     }
     
     save_image(fig,
-        file=file.path(
-            gsub('^~/', '', wd), opt[['output-dir']],
-            'srpms.png'
-        ),
+        file=file.path(gsub('^~/', '', wd), opt[['output-dir']], 'srpms.png'),
         width=1000, height=600, scale=2
     )
+
+    saveWidget(
+        widget = fig,
+        file = file.path(wd, opt[['output-dir']], 'srpms.html'),
+        selfcontained = TRUE
+    )
+    unlink(file.path(
+        wd, opt[['output-dir']], 'srpms_files'
+    ), recursive=TRUE)
 }
 
 
@@ -126,11 +133,18 @@ if (!troubleshooting) {
 
     save_image(fig,
         file=file.path(
-            gsub('^~/', '', wd), opt[['output-dir']],
-            'srpms_log_log.png'
-        ),
+            gsub('^~/', '', wd), opt[['output-dir']], 'srpms_log_log.png'),
         width=1000, height=600, scale=2
     )
+
+    saveWidget(
+        widget = fig,
+        file = file.path(wd, opt[['output-dir']], 'srpms_log_log.html'),
+        selfcontained = TRUE
+    )
+    unlink(file.path(
+        wd, opt[['output-dir']], 'srpms_log_log_files'
+    ), recursive=TRUE)
 }
 
 

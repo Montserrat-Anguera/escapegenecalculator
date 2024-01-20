@@ -35,6 +35,7 @@ install.packages("optparse")
 install.packages("tidyr")
 install.packages("import")
 install.packages("plotly")
+install.packages("htmlwidgets")
 
 install.packages("BiocManager")
 BiocManager::install("rtracklayer")  # this takes ~15 minutes

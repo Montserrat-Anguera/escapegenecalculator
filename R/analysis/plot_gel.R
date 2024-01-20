@@ -5,7 +5,8 @@ library('optparse')
 library('logr')
 import::from(magrittr, '%>%')
 import::from(reshape2, 'melt')
-import::from(plotly, 'plot_ly', 'save_image')
+import::from(plotly, 'save_image')
+import::from(htmlwidgets, 'saveWidget')
 import::from(file.path(wd, 'R', 'tools', 'file_io.R'),
     'append_many_csv', .character_only=TRUE)
 import::from(file.path(wd, 'R', 'tools', 'df_tools.R'),
@@ -37,6 +38,7 @@ option_list = list(
                 metavar="Mus_musculus", type="character",
                 help="choose the maternal mouse strain"),
 
+    # Note: spretus exon_lengths file does not include 'Xist', so I used casteij
     make_option(c("-p", "--pat-mouse-strain"), default="Mus_musculus_casteij",
                 metavar="Mus_musculus_casteij", type="character",
                 help="choose the paternal mouse strain"),
@@ -48,8 +50,13 @@ option_list = list(
 opt_parser = OptionParser(option_list=option_list)
 opt = parse_args(opt_parser)
 troubleshooting <- opt[['troubleshooting']]
-mat_mouse_strain = opt[["mat-mouse-strain"]]
-pat_mouse_strain = opt[["pat-mouse-strain"]]
+mouse_strain_full_to_short = c(
+    "Mus_musculus" = "Bl6",
+    "Mus_musculus_casteij" = "Cast",
+    "Mus_spretus" = "Spretus"
+)
+mat_mouse_strain = mouse_strain_full_to_short[[ (opt[["mat-mouse-strain"]]) ]]
+pat_mouse_strain = mouse_strain_full_to_short[[ (opt[["pat-mouse-strain"]]) ]]
 
 
 # Start Log
@@ -70,11 +77,11 @@ if (!troubleshooting) {
 
 # exon lengths
 mat_exon_lengths = read.csv(
-    file.path(wd, "ref", paste("exon_lengths-", mat_mouse_strain, ".csv", sep='')),
+    file.path(wd, "ref", paste("exon_lengths-", opt[["mat-mouse-strain"]], ".csv", sep='')),
     header=TRUE, check.names=FALSE
 )
 pat_exon_lengths = read.csv(
-    file.path(wd, "ref", paste("exon_lengths-", pat_mouse_strain, ".csv", sep='')),
+    file.path(wd, "ref", paste("exon_lengths-", opt[["pat-mouse-strain"]], ".csv", sep='')),
     header=TRUE, check.names=FALSE
 )
 
@@ -117,12 +124,14 @@ gel_df['exon_length'] <- rowMeans(gel_df[c('exon_length_mat', 'exon_length_pat')
 gel_df['num_reads'] <- rowSums(gel_df[c('num_reads_mat', 'num_reads_pat')])
 gel_df['srpm'] <- rowSums(gel_df[c('srpm_mat', 'srpm_pat')])
 
+# lane title
+gel_df['lane'] <- sub('mouse_', 'Ms ', gel_df[['mouse_id']])
+
 # calculate intensities
 min_intensity=0.2
 srpm_min <- min(gel_df['srpm'])
 srpm_max <- max(gel_df['srpm'])
 gel_df["intensity"] <- (gel_df['srpm']-srpm_min) / (srpm_max-srpm_min) * (1-min_intensity) + min_intensity
-gel_df['lane'] <- sub('mouse_', 'Ms ', gel_df[['mouse_id']])
 
 
 log_print('Plotting Figure 1...')
@@ -160,6 +169,17 @@ if (!troubleshooting) {
         ),
         width=width, height=800, scale=1
     )
+
+    saveWidget(
+        widget = fig,
+        file = file.path(wd, opt[['output-dir']],
+            'gel_by_mouse.html'
+        ),
+        selfcontained = TRUE
+    )
+    unlink(file.path(
+        wd, opt[['output-dir']], 'gel_by_mouse_files'
+    ), recursive=TRUE)
 }
 
 
@@ -179,12 +199,16 @@ gel_df = multi_melt(
     var_name='chromosomal_parentage'
 )
 
+# lane title
 gel_df['lane'] = paste(
     sapply(gel_df[['mouse_id']], snake_to_title_case),
     multiple_replacement(
         gel_df[['chromosomal_parentage']],
-        c("mat"='Bl6', "pat"="Cast")),
+        c("mat"=mat_mouse_strain,
+          "pat"=pat_mouse_strain)),
     sep='<br>')
+gel_df['lane'] <- sub('Mouse ', 'Ms ', gel_df[['lane']])
+
 
 # calculate intensities
 min_intensity=0.2
@@ -234,6 +258,17 @@ if (!troubleshooting) {
         ),
         width=width, height=800, scale=1
     )
+
+    saveWidget(
+        widget = fig,
+        file = file.path(wd, opt[['output-dir']],
+            'gel_by_mouse_allele.html'
+        ),
+        selfcontained = TRUE
+    )
+    unlink(file.path(
+        wd, opt[['output-dir']], 'gel_by_mouse_allele_files'
+    ), recursive=TRUE)
 }
 
 end_time = Sys.time()

@@ -69,7 +69,7 @@ plot_gel <- function(
             textposition="none",
             hovertemplate=paste0(
                 'lane=%{x}<br>',
-                'genes=', gene, '<br>',
+                'gene=', gene, '<br>',
                 'size=%{base}<br>',
                 text_col, '=%{text}<br>',
                 '<extra></extra>'
@@ -92,10 +92,11 @@ plot_gel <- function(
             categoryarray = column_order
         ),
         yaxis = list(
+            showgrid = FALSE,
+            zeroline = FALSE,
             type = 'log',
             range = yrange,
             ticks = 'outside',
-            showline = TRUE,
             title_text = ylabel
         ),
         legend = list(
