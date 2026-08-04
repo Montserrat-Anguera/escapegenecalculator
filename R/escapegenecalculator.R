@@ -3,7 +3,7 @@
 ## normalizes, computes confidence intervals, then outputs a list of escape genes.
 ## 
 ## Usage:
-## Rscript R/escapegenecalculator.R -i data/berletch-spleen
+## Rscript R/escapegenecalculator2.R -i data/berletch-spleen
 
 wd = dirname(this.path::here())  # wd = '~/github/R/escapegenecalculator'
 library('optparse')
@@ -51,13 +51,14 @@ base_dir = file.path(wd, opt[['input-dir']])
 in_dir = file.path(base_dir, 'input')
 out_dir = file.path(base_dir, opt[['output-subdir']])
 zscore = qnorm(opt[['zscore-threshold']])  # 2.326 if zscore_threshold=0.99
+ref_dir = file.path(wd, 'ref')
 
 # optional commands
 gene_id_col='gene_id'  # could use 'locus' for Disteche's data
 
 # in case num_total_reads is unavailable, use this to estimate the num_total_reads
 # In Berletch's 2015 paper, they got 9258991 snp-specific reads from 88842032 total reads
-estimated_pct_snp_reads=0.104  # 9258991/88842032
+#estimated_pct_snp_reads=0.104  # 9258991/88842032 EW deprecating 
 
 
 # Start Log
@@ -91,7 +92,7 @@ if (file.exists(metadata_file)) {
     run_metadata <- read.csv(metadata_file, header=TRUE, sep=',', check.names=FALSE)
     get_total_reads_from_metadata = TRUE
 } else {
-    get_total_reads_from_metadata = FALSE
+    stop('run_metadata.csv is required to proceed')
 }
 
 
@@ -119,7 +120,6 @@ for (mouse_id in mouse_ids) {
     mat_mouse_strain = config[row, "mat_mouse_strain"]
     pat_mouse_strain = config[row, "pat_mouse_strain"]
 
-
     # ----------------------------------------------------------------------
     # Read in raw data
 
@@ -142,6 +142,7 @@ for (mouse_id in mouse_ids) {
     } else {
         # this will cause the rpkms to be estimated downstream
         rpkms = NULL
+        log_print("Heads up! Your RPKMS are being estimated!")
     }
 
 
@@ -210,7 +211,9 @@ for (mouse_id in mouse_ids) {
     if (get_total_reads_from_metadata) {
         num_total_reads = run_metadata[(run_metadata['mouse_id']==mouse_id), 'num_total_reads']
     } else {
-        num_total_reads = num_snp_reads / estimated_pct_snp_reads
+        stop('Estimation of number of reads has failed')
+        #num_total_reads = num_snp_reads / estimated_pct_snp_reads
+
     }
     all_reads['num_total_reads'] = num_total_reads
     all_reads['ratio_xi_over_xa'] = all_reads['num_reads_pat'] / all_reads['num_reads_mat']
@@ -332,6 +335,31 @@ for (mouse_id in mouse_ids) {
             row.names = FALSE,
             sep = ','
         )
+        # ----------------------------------------------------------------------
+        #Removal of genes containing invalid SNPs, to generate separate escape list without this genes 
+        #in addition to original escape list
+        #Don't want to edit anything upstream so adding the file path for the reference file here
+        if (!dir.exists(file.path(out_dir, 'valid_escape_genes'))) {
+            dir.create(file.path(out_dir, 'valid_escape_genes'), recursive=TRUE)
+        }
+
+        invalid_SNPs_filepath = file.path(ref_dir, "SNPmiscall_list_cellagnostic_final19cutoff.csv")
+
+        invalid_SNPs <- read.csv(invalid_SNPs_filepath,na.string="NA", stringsAsFactors=FALSE)
+
+         #Filtering for instances in which the gene name is not within the list of identified, invalid genes
+        escape_genes_valid = escape_genes[
+            !(escape_genes$'gene_name' %in% invalid_SNPs$'gene_name'),
+        ]
+
+         write.table(
+            escape_genes_valid,
+            file = file.path(out_dir, 'valid_escape_genes', paste('escape_genes-valid-', mouse_id, '.csv', sep='')),
+            row.names = FALSE,
+            sep = ','
+        )
+
+
     }
 
     loop_end_time = Sys.time()
